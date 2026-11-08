@@ -32,20 +32,24 @@ public class GroupMasterController {
         String group=groupForType(session,type); MasterDef d=def(type);
         if("kanban-lanes".equals(type))ensureDefaultLanes(group);
         model.addAttribute("type",type); model.addAttribute("title",d.title()); model.addAttribute("requiredMaster",d.required());
-        model.addAttribute("items",jdbc.queryForList("SELECT id,"+d.nameCol()+" AS name,"+d.orderCol()+" AS sort_no,disabled_flag FROM "+d.table()+" WHERE group_id=? ORDER BY "+d.orderCol()+",create_date",group));
+        String colorColumn="kanban-lanes".equals(type)?",lane_color AS color":"";
+        model.addAttribute("items",jdbc.queryForList("SELECT id,"+d.nameCol()+" AS name,"+d.orderCol()+" AS sort_no,disabled_flag"+colorColumn+" FROM "+d.table()+" WHERE group_id=? ORDER BY "+d.orderCol()+",create_date",group));
         return "group/master-list";
     }
 
     @PostMapping("/{type}") @Transactional
-    String create(@PathVariable String type,@RequestParam String name,HttpSession session,RedirectAttributes redirect) {
+    String create(@PathVariable String type,@RequestParam String name,@RequestParam(defaultValue="#f8f6f1") String color,HttpSession session,RedirectAttributes redirect) {
         String group=groupForType(session,type); MasterDef d=def(type); String value=name.strip();
-        if(value.isEmpty()||value.length()>100) return formError(type,"input",value,null,redirect);
+        if(value.isEmpty()||value.length()>100||("kanban-lanes".equals(type)&&!validColor(color))) return formError(type,"input",value,null,color,redirect);
         Integer duplicate=jdbc.queryForObject("SELECT count(*) FROM "+d.table()+" WHERE group_id=? AND lower("+d.nameCol()+")=lower(?)",Integer.class,group,value);
-        if(duplicate!=null&&duplicate>0) return formError(type,"duplicate",value,null,redirect);
+        if(duplicate!=null&&duplicate>0) return formError(type,"duplicate",value,null,color,redirect);
         Integer next=jdbc.queryForObject("SELECT COALESCE(MAX("+d.orderCol()+"::integer),0)+1 FROM "+d.table()+" WHERE group_id=?",Integer.class,group);
         String id="kanban-lanes".equals(type)?"lane-"+UUID.randomUUID().toString().substring(0,12):UUID.randomUUID().toString();
-        try { jdbc.update("INSERT INTO "+d.table()+"(id,group_id,"+d.orderCol()+","+d.nameCol()+",disabled_flag,create_date,update_date) VALUES (?,?,?,?,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",id,group,next,value); }
-        catch(Exception ex){ return formError(type,"duplicate",value,null,redirect); }
+        try {
+            if("kanban-lanes".equals(type))jdbc.update("INSERT INTO kanban_lane(id,group_id,lane_no,lane_name,lane_color,disabled_flag,create_date,update_date) VALUES (?,?,?,?,?,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",id,group,next,value,color.toLowerCase(Locale.ROOT));
+            else jdbc.update("INSERT INTO "+d.table()+"(id,group_id,"+d.orderCol()+","+d.nameCol()+",disabled_flag,create_date,update_date) VALUES (?,?,?,?,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",id,group,next,value);
+        }
+        catch(Exception ex){ return formError(type,"duplicate",value,null,color,redirect); }
         return "redirect:/group/masters/"+type+"?created";
     }
 
@@ -68,12 +72,13 @@ public class GroupMasterController {
     }
 
     @PostMapping("/{type}/{id}/update") @Transactional
-    String update(@PathVariable String type,@PathVariable String id,@RequestParam String name,HttpSession session,RedirectAttributes redirect) {
+    String update(@PathVariable String type,@PathVariable String id,@RequestParam String name,@RequestParam(defaultValue="#f8f6f1") String color,HttpSession session,RedirectAttributes redirect) {
         String group=groupForType(session,type); MasterDef d=def(type); String value=name.strip();
-        if(value.isEmpty()||value.length()>100) return formError(type,"input",value,id,redirect);
+        if(value.isEmpty()||value.length()>100||("kanban-lanes".equals(type)&&!validColor(color))) return formError(type,"input",value,id,color,redirect);
         Integer duplicate=jdbc.queryForObject("SELECT count(*) FROM "+d.table()+" WHERE group_id=? AND lower("+d.nameCol()+")=lower(?) AND id<>?",Integer.class,group,value,id);
-        if(duplicate!=null&&duplicate>0) return formError(type,"duplicate",value,id,redirect);
-        jdbc.update("UPDATE "+d.table()+" SET "+d.nameCol()+"=?,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND id=?",value,group,id);
+        if(duplicate!=null&&duplicate>0) return formError(type,"duplicate",value,id,color,redirect);
+        if("kanban-lanes".equals(type))jdbc.update("UPDATE kanban_lane SET lane_name=?,lane_color=?,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND id=?",value,color.toLowerCase(Locale.ROOT),group,id);
+        else jdbc.update("UPDATE "+d.table()+" SET "+d.nameCol()+"=?,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND id=?",value,group,id);
         return "redirect:/group/masters/"+type+"?updated";
     }
 
@@ -104,5 +109,6 @@ public class GroupMasterController {
 
     private String groupForType(HttpSession session,String type){Object group=session.getAttribute("activeGroupId");if(group==null)throw new IllegalStateException("所属グループを選択してください");if(!"labels".equals(type)&&!Boolean.TRUE.equals(session.getAttribute("activeGroupLeader")))throw new IllegalStateException("リーダー権限が必要です");return group.toString();}
     private void ensureDefaultLanes(String group){Integer count=jdbc.queryForObject("SELECT count(*) FROM kanban_lane WHERE group_id=?",Integer.class,group);if(count!=null&&count>0)return;int no=1;for(String name:List.of("未着手","進行中","完了"))jdbc.update("INSERT INTO kanban_lane(id,group_id,lane_no,lane_name) VALUES (?,?,?,?)","lane-"+UUID.randomUUID().toString().substring(0,12),group,no++,name);}
-    private String formError(String type,String error,String name,String id,RedirectAttributes redirect){redirect.addAttribute("error",error);redirect.addFlashAttribute("formName",name);redirect.addFlashAttribute("formMode",id==null?"create":"edit");if(id!=null)redirect.addFlashAttribute("formId",id);return "redirect:/group/masters/"+type;}
+    private boolean validColor(String color){return color!=null&&color.matches("#[0-9A-Fa-f]{6}");}
+    private String formError(String type,String error,String name,String id,String color,RedirectAttributes redirect){redirect.addAttribute("error",error);redirect.addFlashAttribute("formName",name);redirect.addFlashAttribute("formColor",color);redirect.addFlashAttribute("formMode",id==null?"create":"edit");if(id!=null)redirect.addFlashAttribute("formId",id);return "redirect:/group/masters/"+type;}
 }
