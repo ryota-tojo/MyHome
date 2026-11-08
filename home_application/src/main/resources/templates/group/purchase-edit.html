@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>購入データ編集</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/theme.css}">
+  <link rel="stylesheet" th:href="@{/css/polish.css}">
+  <link rel="stylesheet" th:href="@{/css/actions.css}">
+  <style>
+    .entry-wrap{width:min(1100px,80vw);margin:auto}.entry-form{display:grid;gap:16px}.entry-form fieldset{min-width:0;margin:0;padding:0;border:0}.entry-grid{display:grid;grid-template-columns:1fr;gap:16px}.entry-grid>label{width:50%}.entry-grid .label-title{display:inline-flex;align-items:baseline;width:max-content}.pair-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%}.pair-row>label{width:100%}.entry-grid .label-title .required{display:inline;margin-left:.35em;color:#dc3545!important;font-size:.6em;font-weight:700;line-height:1;vertical-align:middle}.full{grid-column:1/-1;width:100%!important}.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.delete-actions{display:flex;justify-content:flex-end;margin-top:14px}.locked-note{padding:14px;border-radius:8px;background:#eceff1;color:#59636c}.amount-button{width:100%;text-align:right;background:#fff;color:#1f2933;border:1px solid #bbc4ce}.amount-dialog{width:min(460px,calc(100vw - 28px));padding:0;border:0;border-radius:14px}.amount-dialog::backdrop{background:rgba(20,28,40,.48);backdrop-filter:blur(4px)}.amount-body{padding:24px}.amount-body input{font-size:1.4rem;text-align:right}.quick-amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.amount-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.check-select{min-height:130px}@media(max-width:700px){.entry-wrap{width:94vw}.entry-grid>label{width:100%}.pair-row{grid-template-columns:1fr}.full{grid-column:auto}.form-actions{flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main>
+  <div class="entry-wrap">
+    <div class="title-row"><h1>購入データ編集</h1><a th:href="@{/group/purchases}">一覧へ戻る</a></div>
+    <div class="success" th:if="${param.updated}">更新しました。</div>
+    <div class="alert" th:if="${param.error}" th:text="${param.error[0]=='notDeletable'?'精算済みまたは月次確定済みの購入データは削除できません。':'月次確定済みのデータは変更できません。'}">操作できません。</div>
+    <section class="panel">
+      <h2>購入データ編集</h2>
+      <p class="locked-note" th:if="${row.monthly_closed==1}">対象月は月次処理で確定済みのため、この購入データは更新・削除できません。</p>
+      <div class="alert" th:if="${row.monthly_closed!=1 and row.reference_warning==1}">無効または削除済みのメンバー・カテゴリー・支払い方法・ラベルが設定されています。有効な値を選択して更新してください。このままでは月次確定できません。</div>
+      <form id="entry-form" class="entry-form" method="post" th:action="@{|/group/purchases/${row.id}|}">
+        <fieldset th:disabled="${row.monthly_closed==1}">
+          <div class="entry-grid">
+            <label><span class="label-title">購入日 <span class="required">必須</span></span><input type="date" name="shoppingDate" th:value="${#dates.format(row.shopping_date,'yyyy-MM-dd')}" required></label>
+            <label><span class="label-title">購入者（メンバー） <span class="required">必須</span></span><select name="memberId" required><option th:each="x:${members}" th:value="${x.id}" th:text="${x.name}" th:selected="${x.id==row.shopping_user_id}"></option></select></label>
+            <label><span class="label-title">カテゴリー <span class="required">必須</span></span><select name="categoryId" required><option th:each="x:${categories}" th:value="${x.id}" th:text="${x.name}" th:selected="${x.id==row.category_id}"></option></select></label>
+            <div class="pair-row">
+              <label><span class="label-title">種別 <span class="required">必須</span></span><select name="type" required><option value="EXPENSE" th:selected="${row.type==1}">支出</option><option value="INCOME" th:selected="${row.type==2}">収入</option></select></label>
+              <label><span class="label-title">支払い方法 <span class="required">必須</span></span><select name="paymentMethodId" required><option th:each="x:${payments}" th:value="${x.id}" th:text="${x.name}" th:selected="${x.id==row.payment_method_id}"></option></select></label>
+            </div>
+            <div class="pair-row">
+              <label><span class="label-title">金額 <span class="required">必須</span></span><input type="hidden" name="amount" id="amount" th:value="${row.amount}" required><button type="button" class="amount-button" id="amount-open" th:text="|${#numbers.formatInteger(row.amount,1,'COMMA')}円|">1円</button></label>
+              <label><span class="label-title">精算 <span class="required">必須</span></span><select name="settlement" required><option value="UNSETTLED" th:selected="${row.settlement==1}">未精算</option><option value="SETTLED" th:selected="${row.settlement==2}">精算済</option></select></label>
+            </div>
+            <label class="full">ラベル<select class="check-select" name="labelIds" multiple data-select-threshold="1" data-search-placeholder="ラベルを検索・選択"><option th:each="x:${labels}" th:value="${x.id}" th:text="${x.name}" th:selected="${row.shopping_label_ids!=null and #lists.contains(#strings.arraySplit(row.shopping_label_ids,','),x.id)}"></option></select></label>
+            <label class="full">備考<textarea name="remarks" maxlength="500" th:text="${row.remarks}"></textarea></label>
+          </div>
+        </fieldset>
+        <div class="form-actions"><button type="submit" th:disabled="${row.monthly_closed==1}">更新</button></div>
+      </form>
+      <form method="post" th:action="@{|/group/purchases/${row.id}/delete|}" onsubmit="return confirm('この購入データを削除しますか？')"><div class="delete-actions"><button class="danger" th:disabled="${row.monthly_closed==1 or row.settlement==2}" th:title="${row.monthly_closed==1?'月次確定済みの購入データは削除できません。':row.settlement==2?'精算済みの購入データは削除できません。':null}">削除</button></div></form>
+    </section>
+  </div>
+</main>
+<footer th:replace="~{fragments :: footer}"></footer>
+<dialog id="amount-dialog" class="amount-dialog">
+  <div class="amount-body"><h2>金額入力</h2><input id="amount-input" type="number" min="1" max="2147483647" th:value="${row.amount}">
+    <div class="quick-amounts"><button type="button" data-add="100">＋100</button><button type="button" data-add="500">＋500</button><button type="button" data-add="1000">＋1,000</button><button type="button" data-add="5000">＋5,000</button><button type="button" data-add="10000">＋10,000</button><button type="button" class="secondary" id="amount-clear">クリア</button></div>
+    <div class="amount-actions"><button type="button" class="secondary" id="amount-cancel">キャンセル</button><button type="button" id="amount-set">設定</button></div>
+  </div>
+</dialog>
+<script>
+(()=>{const hidden=document.getElementById('amount'),display=document.getElementById('amount-open'),dialog=document.getElementById('amount-dialog'),input=document.getElementById('amount-input');const setAmount=value=>{value=Math.max(1,Number(value)||1);hidden.value=value;display.textContent=value.toLocaleString('ja-JP')+'円'};display.onclick=()=>{input.value=hidden.value;dialog.showModal();input.focus();input.select()};document.querySelectorAll('[data-add]').forEach(button=>button.onclick=()=>input.value=(Number(input.value)||0)+Number(button.dataset.add));document.getElementById('amount-clear').onclick=()=>input.value='';document.getElementById('amount-cancel').onclick=()=>dialog.close();document.getElementById('amount-set').onclick=()=>{setAmount(input.value);dialog.close()}})();
+</script>
+</body>
+</html>

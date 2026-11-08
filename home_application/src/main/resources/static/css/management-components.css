@@ -1,0 +1,21 @@
+/* Shared management list, sortable card and modal components. */
+main>.management-panel,main>.management-message,main>.panel{width:min(1200px,80vw);margin-right:auto;margin-left:auto}
+.management-toolbar,.master-toolbar,.pattern-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.sortable-list,.pattern-list{display:grid;gap:12px;padding:0;list-style:none}
+.sortable-item,.pattern-card{position:relative;align-items:center;gap:14px;min-height:64px;padding:10px 16px;border:1px solid var(--border,#d8d8d8);border-radius:10px;background:#fff}
+.sortable-item{display:flex}.pattern-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;min-height:72px;padding:12px 16px}
+.sortable-item.disabled,.pattern-card.disabled{opacity:.65}
+.drag-handle{display:flex;align-items:center;align-self:stretch;cursor:grab;color:#777;font-size:1.2rem}
+.sortable-item .name{display:flex;align-items:center;flex:1;min-width:0;font-weight:600;overflow-wrap:anywhere}
+.master-note,.pattern-toolbar p{margin:0;color:var(--muted,#666);font-size:.9rem}
+.master-actions,.pattern-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:nowrap;margin-left:auto}
+.panel .master-actions form,.panel .pattern-actions form{display:flex!important;align-items:center!important;align-self:center!important;width:auto!important;margin:0!important;padding:0!important;border:0!important}
+.master-actions button,.pattern-actions button{min-width:82px;min-height:36px;margin:0!important;padding:.45rem .75rem;align-self:center!important}
+.panel .master-actions form>button:last-child,.panel .pattern-actions form>button:last-child{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:auto!important;margin:0!important}
+.status-label{display:inline-flex;align-items:center;justify-content:center;min-width:54px;padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700}
+.status-label.active{color:#17653a;background:#dff3e7;border:1px solid #afd9bf}.status-label.inactive{color:#676d73;background:#eceff1;border:1px solid #cfd4d8}
+.pattern-main h3{margin:0 0 7px}.pattern-summary{display:flex;flex-wrap:wrap;gap:5px 14px;color:var(--muted);font-size:.86rem}.auto-disabled{color:#a24b00;font-size:.8rem}
+.pattern-dialog{width:min(760px,calc(100vw - 28px));max-height:90vh;padding:0;border:0;border-radius:14px;overflow:auto}.pattern-dialog::backdrop{background:rgba(20,28,40,.48);backdrop-filter:blur(4px)}
+.pattern-form{display:grid;gap:16px;padding:26px}.pattern-form h2{margin:0}.pattern-fields{display:grid;grid-template-columns:1fr;gap:15px}.pattern-fields>.half{width:50%}.pattern-fields>.pattern-pair{display:grid;grid-template-columns:1fr 1fr;gap:15px;width:100%}.pattern-fields>.pattern-pair>label,.pattern-fields>.full{width:100%}.pattern-fields select[multiple]{min-height:120px}.dialog-actions{position:sticky;bottom:0;background:#fff;padding-top:12px}
+@media(max-width:700px){main>.management-panel,main>.management-message{width:94vw}.sortable-item,.pattern-card{align-items:flex-start;padding:13px}.sortable-item{flex-wrap:wrap}.pattern-card{grid-template-columns:auto 1fr}.drag-handle{align-self:flex-start;padding:5px;touch-action:none}.sortable-item .name{min-height:36px;padding:3px 72px 3px 0}.pattern-main{padding-right:70px}.master-actions,.pattern-actions{width:100%;flex-wrap:nowrap;justify-content:flex-end;gap:7px}.master-actions .status-label,.pattern-actions .status-label{position:absolute;top:13px;right:13px}.master-actions button,.pattern-actions button{min-width:0;padding:.45rem .65rem}.sortable-item.touch-sorting,.pattern-card.touch-sorting{z-index:20;border-color:#0d6efd;box-shadow:0 10px 24px rgba(13,110,253,.25);transform:scale(1.01)}.pattern-fields>.half{width:100%}.pattern-fields>.pattern-pair{grid-template-columns:1fr}}
+@media(max-width:700px){main>.panel{width:94vw}}

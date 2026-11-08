@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ホーム</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}">
+  <link rel="stylesheet" th:href="@{/css/polish.css}"><link rel="stylesheet" th:href="@{/css/actions.css}">
+  <style>
+    .user-group-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+    .user-group-card{display:flex;flex-direction:column;min-width:0;min-height:150px;padding:22px;border:1px solid var(--border);border-radius:12px;background:#fff;color:inherit;text-decoration:none;box-shadow:var(--shadow-sm);transition:border-color .15s,box-shadow .15s,transform .15s}
+    .user-group-card:hover{border-color:#9eb8d2;box-shadow:var(--shadow-md);transform:translateY(-1px)}
+    .user-group-card h3{margin:0 0 10px;font-size:1.2rem;overflow-wrap:anywhere}
+    .user-group-card p{margin:0 0 18px;color:var(--muted);overflow-wrap:anywhere}
+    .user-group-card .group-role{align-self:flex-start;margin-top:auto;padding:4px 10px;border:1px solid #c7d8c8;border-radius:999px;background:#e8f4e8;color:#315e36;font-size:.8rem;font-weight:700}
+    @media(max-width:700px){.user-group-grid{grid-template-columns:1fr}.user-group-card{min-height:130px}}
+  </style>
+</head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main>
+  <div class="title-area"><h1>ホーム</h1></div>
+  <div class="success" th:if="${param.requested}">所属グループへの加入申請を送信しました。</div>
+  <section class="panel">
+    <h2>加入申請状況</h2>
+    <div class="table-wrap"><table><thead><tr><th>所属グループ</th><th>所属グループID</th><th>状態</th><th>申請日時</th></tr></thead><tbody><tr th:each="a:${applications}"><td th:text="${a.group_name}"></td><td th:text="${a.group_id}"></td><td>承認待ち</td><td th:text="${a.create_date}"></td></tr><tr th:if="${#lists.isEmpty(applications)}"><td colspan="4">加入申請はありません。</td></tr></tbody></table></div>
+  </section>
+  <section class="panel">
+    <h2>所属グループ一覧</h2>
+    <div class="user-group-grid" th:if="${!#lists.isEmpty(groups)}">
+      <a class="user-group-card" th:each="g:${groups}" th:href="@{/groups/activate(groupId=${g.group_id})}">
+        <h3 th:text="${g.group_name}"></h3>
+        <p th:text="${'所属グループID：'+g.group_id}"></p>
+        <span class="group-role" th:text="${g.leader_flag==1?'リーダー':'メンバー'}"></span>
+      </a>
+    </div>
+    <p th:if="${#lists.isEmpty(groups)}">所属グループはありません。</p>
+  </section>
+</main>
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>

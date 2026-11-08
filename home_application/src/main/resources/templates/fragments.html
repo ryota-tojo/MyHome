@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header th:fragment="header" class="site-header theme-nav general-nav">
+  <span class="ui-config" hidden th:attr="data-select-threshold=${selectSearchThreshold}"></span>
+  <span class="latest-version-config" hidden th:attr="data-version=${latestVersion}"></span>
+  <script th:src="@{/js/datetime-display.js}" defer></script>
+  <script th:src="@{/js/header-menu.js}" defer></script>
+  <script th:src="@{/js/adaptive-select.js}" defer></script>
+  <script th:src="@{/js/multi-check.js}" defer></script>
+  <script th:src="@{/js/required-labels.js}" defer></script>
+  <script th:src="@{/js/form-state.js}" defer></script>
+  <script th:src="@{/js/touch-sortable.js}" defer></script>
+  <script th:src="@{/js/common-footer.js}" defer></script>
+  <script th:src="@{/js/modal-backdrop-close.js}" defer></script>
+  <script th:src="@{/js/password-toggle.js}" defer></script>
+  <script th:src="@{/js/role-row-highlight.js}" defer></script>
+
+  <a class="brand" th:href="@{/}">
+    <span th:text="${activeGroupName!=null?activeGroupName:'一般ユーザー'}">一般ユーザー</span>
+  </a>
+  <button type="button" class="nav-toggle" aria-label="メニューを開く" aria-expanded="false"><span></span><span></span><span></span></button>
+
+  <nav class="general-menu" th:if="${activeGroupName==null}">
+    <a th:href="@{/groups/setup}">所属グループ作成</a>
+    <a th:href="@{/groups/join}">所属グループ加入申請</a>
+    <div class="menu-dropdown menu-other"><button type="button" class="menu-trigger">その他</button><div class="menu-panel"><a th:href="@{/account/profile}">ユーザー情報</a><a th:href="@{/groups/switch}">所属グループ切替</a></div></div>
+  </nav>
+
+  <nav class="general-menu admin-menu group-menu" th:if="${activeGroupName!=null}">
+    <div class="menu-dropdown">
+      <button type="button" class="menu-trigger">所属グループ管理</button>
+      <div class="menu-panel">
+        <a th:if="${activeGroupLeader}" th:href="@{/group/settings}">設定</a>
+        <a th:if="${activeGroupLeader}" th:href="@{/group/members}">メンバー管理</a>
+        <a th:if="${activeGroupLeader}" th:href="@{/group/feature/categories}">カテゴリー管理</a>
+        <a th:if="${activeGroupLeader}" th:href="@{/group/feature/payments}">支払い方法管理</a>
+        <a th:href="@{/group/feature/labels}">ラベル管理</a>
+        <a th:href="@{/group/feature/input-patterns}">購入データ入力パターン管理</a>
+        <a th:href="@{/group/feature/search-patterns}">購入データ検索パターン管理</a>
+        <a th:href="@{/group/feature/templates}">購入データ入力テンプレート管理</a>
+      </div>
+    </div>
+    <div class="menu-dropdown" th:if="${activeGroupLeader}">
+      <button type="button" class="menu-trigger">CSV</button>
+      <div class="menu-panel"><a th:href="@{/group/csv/categories}">カテゴリー</a><a th:href="@{/group/csv/payments}">支払い方法</a><a th:href="@{/group/csv/labels}">ラベル</a><a th:href="@{/group/csv/input-patterns}">購入データ入力パターン</a><a th:href="@{/group/csv/search-patterns}">購入データ検索パターン</a><a th:href="@{/group/csv/templates}">購入データ入力テンプレート</a><a th:href="@{/group/purchases/csv(type='budgets')}">予算</a><a th:href="@{/group/purchases/csv(type='purchases')}">購入データ</a><a th:href="@{/group/purchases/csv(type='communications')}">お付き合い帳</a></div>
+    </div>
+    <div class="menu-dropdown">
+      <button type="button" class="menu-trigger">カンバン</button>
+      <div class="menu-panel"><a th:href="@{/group/kanban}">カンバン</a><a th:if="${activeGroupLeader}" th:href="@{/group/masters/kanban-lanes}">レーン管理</a></div>
+    </div>
+    <div class="menu-dropdown">
+      <button type="button" class="menu-trigger">予算</button>
+      <div class="menu-panel"><a th:href="@{/budgets}">予算入力</a><a th:href="@{/budgets/yearly}">予算一覧（年間）</a></div>
+    </div>
+    <div class="menu-dropdown">
+      <button type="button" class="menu-trigger">データ入力</button>
+      <div class="menu-panel"><a th:href="@{/shopping}">購入データ入力</a><a th:href="@{/shopping/templates}">購入データテンプレート入力</a></div>
+    </div>
+    <div class="menu-dropdown">
+      <button type="button" class="menu-trigger">データ管理</button>
+      <div class="menu-panel"><a th:href="@{/group/purchases}">購入データ管理</a><a th:href="@{/group/monthly}">月次処理</a></div>
+    </div>
+    <div class="menu-dropdown">
+      <button type="button" class="menu-trigger">データ分析</button>
+      <div class="menu-panel"><a th:href="@{/group/analysis/budget-actual}">予実対比</a><a th:href="@{/group/analysis/year-comparison}">前年対比</a></div>
+    </div>
+    <div class="menu-dropdown">
+      <button type="button" class="menu-trigger">お付き合い帳</button>
+      <div class="menu-panel"><a th:href="@{/communication}">お付き合い帳一覧</a></div>
+    </div>
+    <div class="menu-dropdown menu-other"><button type="button" class="menu-trigger">その他</button><div class="menu-panel"><a th:href="@{/account/profile}">ユーザー情報</a><a th:href="@{/groups/switch}">所属グループ切替</a></div></div>
+  </nav>
+
+  <form th:action="@{/logout}" method="post"><button class="nav-logout">ログアウト</button></form>
+</header>
+
+<div th:fragment="admin-header" class="site-header admin-nav" role="banner">
+  <span class="ui-config" hidden th:attr="data-select-threshold=${selectSearchThreshold}"></span>
+  <span class="latest-version-config" hidden th:attr="data-version=${latestVersion}"></span>
+  <script th:src="@{/js/datetime-display.js}" defer></script>
+  <script th:src="@{/js/list-search-modal.js}" defer></script>
+  <script th:src="@{/js/header-menu.js}" defer></script>
+  <script th:src="@{/js/adaptive-select.js}" defer></script>
+  <script th:src="@{/js/multi-check.js}" defer></script>
+  <script th:src="@{/js/required-labels.js}" defer></script>
+  <script th:src="@{/js/password-toggle.js}" defer></script>
+  <script th:src="@{/js/role-row-highlight.js}" defer></script>
+  <script th:src="@{/js/form-state.js}" defer></script>
+  <script th:src="@{/js/touch-sortable.js}" defer></script>
+  <script th:src="@{/js/common-footer.js}" defer></script>
+  <script th:src="@{/js/modal-backdrop-close.js}" defer></script>
+  <a class="brand" th:href="@{/admin}">管理者</a>
+  <button type="button" class="nav-toggle" aria-label="メニューを開く" aria-expanded="false"><span></span><span></span><span></span></button>
+  <nav class="admin-menu">
+    <div class="menu-dropdown"><button type="button" class="menu-trigger">設定</button><div class="menu-panel"><a th:href="@{/admin/settings/display}">表示設定</a><a th:href="@{/admin/settings/system}">システム設定</a></div></div>
+    <div class="menu-dropdown"><button type="button" class="menu-trigger">ユーザー</button><div class="menu-panel"><a th:href="@{/admin/users}">ユーザー一覧</a><a th:href="@{/admin/users/new}">ユーザー新規登録</a></div></div>
+    <div class="menu-dropdown"><button type="button" class="menu-trigger">所属グループ</button><div class="menu-panel"><a th:href="@{/admin/groups}">所属グループ一覧</a><a th:href="@{/admin/groups/new}">所属グループ新規登録</a></div></div>
+    <div class="menu-dropdown"><button type="button" class="menu-trigger">メンテナンス</button><div class="menu-panel"><a th:href="@{/admin/maintenance/state}">メンテナンス状態切替</a><a th:href="@{/admin/versions}">バージョン管理</a></div></div>
+    <div class="menu-dropdown"><button type="button" class="menu-trigger">ログ</button><div class="menu-panel"><a th:href="@{/admin/logs}">操作ログ</a></div></div>
+    <div class="menu-dropdown"><button type="button" class="menu-trigger">データ管理</button><div class="menu-panel"><a th:href="@{/admin/data/backup}">データバックアップ</a><a th:href="@{/admin/data/import}">データ入れ替え</a><a th:href="@{/admin/data/initialize}">データ初期化</a></div></div>
+    <div class="menu-dropdown menu-other"><button type="button" class="menu-trigger">その他</button><div class="menu-panel"><a th:href="@{/account/profile}">ユーザー情報</a></div></div>
+  </nav>
+  <form th:action="@{/logout}" method="post"><button class="nav-logout">ログアウト</button></form>
+</div>
+
+<footer th:fragment="footer" class="site-footer"><hr><p><span>Version </span><span th:text="${latestVersion}">-</span></p></footer>
+</body>
+</html>

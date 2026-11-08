@@ -1,0 +1,13 @@
+# すべての `.gradle` ファイルを LF に統一
+*.gradle text eol=lf
+
+# シェルスクリプトや `gradlew` の改行コードも LF に統一
+*.sh text eol=lf
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+
+# `.bat` ファイルは Windows で実行するため CRLF
+*.bat text eol=crlf
+
+# `.jar` はバイナリ扱い（改行変換なし）
+*.jar binary

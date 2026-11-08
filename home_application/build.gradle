@@ -1,0 +1,99 @@
+plugins {
+	id 'java'
+    id 'groovy'
+    id 'jacoco'
+	id 'org.springframework.boot' version '3.4.0'
+	id 'io.spring.dependency-management' version '1.1.6'
+    id 'org.jetbrains.kotlin.jvm' version '1.9.22'
+}
+
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "17"
+}
+
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "17"
+}
+
+compileTestGroovy {
+    dependsOn tasks.getByPath('compileKotlin')
+    dependsOn tasks.getByPath('compileTestKotlin')
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+        languageVersion = JavaLanguageVersion.of(17) // Java 17 を指定
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Spring Boot の依存関係
+	implementation 'org.springframework.boot:spring-boot-starter'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Kotlin 関連
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+
+    // PostgreSQL & Exposed（Kotlin の ORM）
+    implementation 'org.postgresql:postgresql:42.5.0'
+    implementation 'org.jetbrains.exposed:exposed-core:0.43.0'
+    implementation 'org.jetbrains.exposed:exposed-dao:0.43.0'
+    implementation 'org.jetbrains.exposed:exposed-jdbc:0.43.0'
+    implementation 'org.jetbrains.exposed:exposed-java-time:0.43.0'
+
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.postgresql:postgresql'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // Lombok
+	implementation 'org.projectlombok:lombok:1.18.30'
+	annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+	// テスト用の依存関係
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:1.9.22"
+    testImplementation "io.mockk:mockk:1.13.5"
+    testImplementation 'org.spockframework:spock-core:2.3-groovy-4.0'
+    testImplementation 'org.spockframework:spock-spring:2.3-groovy-4.0'
+    testImplementation 'org.mockito:mockito-core:5.5.0'
+    testImplementation 'org.mockito:mockito-inline:5.2.0'
+
+    // JUnit プラットフォームランチャー（必要な場合）
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Spring Boot DevTools
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+test{
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    reports {
+        html.required = true
+        xml.required = true
+    }
+}

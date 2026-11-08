@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>購入データテンプレート入力</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}"><link rel="stylesheet" th:href="@{/css/polish.css}"><link rel="stylesheet" th:href="@{/css/actions.css}">
+  <style>
+    .template-wrap{width:min(1100px,80vw);margin:auto}.common-date{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:18px}.common-date label{width:min(320px,100%)}.template-list{display:grid;gap:12px}.template-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:16px 18px;border:1px solid #d9dfe5;border-radius:12px;background:#fff;transition:background .15s,border-color .15s,box-shadow .15s}.template-card:hover{border-color:#b8d6ee;background:#f3f9ff;box-shadow:0 2px 7px rgba(70,135,180,.14)}.template-card.selected{border-color:#8ebde0;background:#eaf5ff}.template-card input[type=checkbox]{margin:0}.template-card h2{margin:0;font-size:1.05rem;line-height:1.2}.template-summary{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:9px;color:#59636e}.template-summary:empty{display:none}.detail-button{align-self:center;white-space:nowrap;background:#f3f6f8;color:#25313c;border-color:#cbd3dc}.template-actions{display:flex;align-items:center;justify-content:flex-end;gap:18px;margin-top:20px}.selected-count{font-weight:700}.empty-template{text-align:center;padding:28px;color:#68737e}.detail-dialog{width:min(620px,calc(100vw - 28px));padding:0;border:0;border-radius:14px}.detail-dialog::backdrop{background:rgba(20,28,40,.48);backdrop-filter:blur(4px)}.detail-dialog__body{padding:24px}.detail-dialog__body h2{margin-top:0}.detail-grid{display:grid;grid-template-columns:150px 1fr;border-top:1px solid #dce1e5}.detail-grid dt,.detail-grid dd{margin:0;padding:11px 8px;border-bottom:1px solid #dce1e5}.detail-grid dt{font-weight:700;color:#52606c}.detail-dialog__actions{display:flex;justify-content:flex-end;padding:0 24px 24px}@media(max-width:700px){.template-wrap{width:94vw}.common-date{align-items:stretch;flex-direction:column}.template-card{grid-template-columns:auto 1fr}.detail-button{grid-column:2;justify-self:end}.template-actions{align-items:stretch;flex-direction:column}.template-actions button{width:100%}.detail-grid{grid-template-columns:1fr}.detail-grid dt{padding-bottom:2px;border-bottom:0}.detail-grid dd{padding-top:2px}}
+  </style>
+</head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main>
+  <div class="title-area"><h1>購入データテンプレート入力</h1></div>
+  <div class="template-wrap">
+    <div class="success" th:if="${param.created}" th:text="|${param.created[0]}件の購入データを登録しました。|"></div>
+    <div class="alert" th:if="${param.error}" th:text="${param.error[0]=='closed'?'月次確定済みの月には登録できません。':param.error[0]=='unselected'?'登録するテンプレートを選択してください。':param.error[0]=='incomplete'?'必須項目が未設定のテンプレートが含まれています。':'選択したテンプレートを使用できません。'}"></div>
+    <form id="template-form" method="post" th:action="@{/shopping/templates}">
+      <section class="panel common-date">
+        <div><h2>購入日</h2><p>選択したすべてのテンプレートに同じ日付を設定します。</p></div>
+        <label><span class="label-title">購入日 <span class="required">必須</span></span><input type="date" name="shoppingDate" th:value="${today}" required></label>
+      </section>
+      <section class="panel">
+        <h2>テンプレート一覧</h2>
+        <div class="template-list">
+          <article class="template-card" th:each="p:${templates}">
+            <input class="template-check" type="checkbox" name="templateIds" th:value="${p.id}">
+            <span><h2 th:text="${p.display_name}"></h2><span class="template-summary"><span th:if="${p.transaction_type}" th:text="${p.transaction_type=='EXPENSE'?'支出':'収入'}"></span><span th:if="${p.amount}" th:text="|${#numbers.formatInteger(p.amount,1,'COMMA')}円|"></span><span th:if="${p.note}" th:text="${p.note}"></span></span></span>
+            <button type="button" class="detail-button" th:attr="data-name=${p.display_name},data-category=${p.category_names},data-type=${p.transaction_type},data-payment=${p.payment_names},data-amount=${p.amount},data-member=${p.member_names},data-settlement=${p.settlement_status},data-label=${p.label_names},data-note=${p.note}">設定詳細</button>
+          </article>
+          <p class="empty-template" th:if="${#lists.isEmpty(templates)}">有効な購入データ入力テンプレートはありません。</p>
+        </div>
+        <div class="template-actions"><span class="selected-count">選択中：<strong id="selected-count">0</strong>件</span><button id="register-button" type="submit" disabled>登録</button></div>
+      </section>
+    </form>
+  </div>
+</main>
+<dialog id="detail-dialog" class="detail-dialog"><div class="detail-dialog__body"><h2 id="detail-name">設定詳細</h2><dl class="detail-grid"><dt>カテゴリー</dt><dd id="detail-category"></dd><dt>種別</dt><dd id="detail-type"></dd><dt>支払い方法</dt><dd id="detail-payment"></dd><dt>金額</dt><dd id="detail-amount"></dd><dt>購入者</dt><dd id="detail-member"></dd><dt>精算</dt><dd id="detail-settlement"></dd><dt>ラベル</dt><dd id="detail-label"></dd><dt>備考</dt><dd id="detail-note"></dd></dl></div><div class="detail-dialog__actions"><button type="button" class="secondary" id="detail-close">閉じる</button></div></dialog>
+<footer th:replace="~{fragments :: footer}"></footer>
+<script>
+(()=>{const checks=[...document.querySelectorAll('.template-check')],count=document.getElementById('selected-count'),button=document.getElementById('register-button'),dialog=document.getElementById('detail-dialog');const refresh=()=>{const selected=checks.filter(x=>x.checked);count.textContent=String(selected.length);button.disabled=selected.length===0;checks.forEach(x=>x.closest('.template-card')?.classList.toggle('selected',x.checked))};checks.forEach(x=>x.addEventListener('change',refresh));document.getElementById('template-form').addEventListener('submit',e=>{const n=checks.filter(x=>x.checked).length;if(n===0){e.preventDefault();alert('登録するテンプレートを選択してください。');return}if(!confirm(n+'件のテンプレートから購入データを登録しますか？'))e.preventDefault()});const show=(id,value)=>document.getElementById(id).textContent=value||'未設定';document.querySelectorAll('.detail-button').forEach(b=>b.addEventListener('click',()=>{show('detail-name',b.dataset.name);show('detail-category',b.dataset.category);show('detail-type',b.dataset.type==='EXPENSE'?'支出':b.dataset.type==='INCOME'?'収入':'未設定');show('detail-payment',b.dataset.payment);show('detail-amount',b.dataset.amount?Number(b.dataset.amount).toLocaleString('ja-JP')+'円':'未設定');show('detail-member',b.dataset.member);show('detail-settlement',b.dataset.settlement==='SETTLED'?'精算済':b.dataset.settlement==='UNSETTLED'?'未精算':'未設定');show('detail-label',b.dataset.label);show('detail-note',b.dataset.note);dialog.showModal()}));document.getElementById('detail-close').onclick=()=>dialog.close();refresh()})();
+</script>
+</body></html>

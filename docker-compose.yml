@@ -1,0 +1,55 @@
+name: home_application
+
+services:
+  postgres:
+    container_name: my_home_database_container
+    build:
+      context: ./image/postgres
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./postgres/init/:/docker-entrypoint-initdb.d
+      - home_postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - home_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    container_name: my_home_web_container
+    build:
+      context: .
+      dockerfile: ./image/java/Dockerfile
+    ports:
+      - "8081:8080"
+    volumes:
+      # DBに保存したフォント情報と実ファイルが分離しないよう、プロジェクト内へ永続化する。
+      - ./home_application/data/fonts:/app/data/fonts
+    networks:
+      - home_network
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  home_network:
+    driver: bridge
+
+volumes:
+  home_postgres_data:

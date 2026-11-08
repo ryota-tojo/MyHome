@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>前年対比</title>
+<link rel="stylesheet" th:href="@{/css/app.css}">
+<link rel="stylesheet" th:href="@{/theme.css}">
+<link rel="stylesheet" th:href="@{/css/polish.css}">
+<link rel="stylesheet" th:href="@{/css/actions.css}">
+<style>
+.analysis-wrap{width:min(1500px,94vw);margin:auto}
+.year-form{display:flex;align-items:end;justify-content:flex-end;gap:10px}
+.legend{display:flex;gap:18px;margin:10px 0 18px}
+.legend span:before{content:'';display:inline-block;width:14px;height:10px;margin-right:6px;border-radius:2px}
+.legend .current:before{background:#3478c7}
+.legend .previous:before{background:#aeb8c2}
+.chart-scroll{overflow:auto}
+.vertical-chart{display:flex;align-items:flex-end;gap:18px;height:390px;min-width:max-content;padding:56px 20px 48px;border-left:1px solid #bfc7cf;border-bottom:1px solid #bfc7cf}
+.chart-group{position:relative;display:flex;align-items:flex-end;justify-content:center;gap:12px;width:126px;height:100%}
+.vbar{position:relative;width:46px;min-height:1px;border-radius:6px 6px 0 0}
+.vbar-value{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);padding:2px 4px;border-radius:4px;background:rgba(255,255,255,.9);color:#26313c;font-size:.68rem;font-weight:800;line-height:1.15;white-space:nowrap;box-shadow:0 1px 4px rgba(20,28,40,.12)}
+.vbar.current{background:#3478c7}
+.vbar.previous{background:#aeb8c2}
+.chart-label{position:absolute;top:calc(100% + 8px);left:50%;width:94px;transform:translateX(-50%);text-align:center;font-size:.76rem;overflow:hidden;text-overflow:ellipsis}
+.comparison-table{width:100%;border-collapse:collapse;margin-top:20px}
+.comparison-table th,.comparison-table td{padding:11px;border-bottom:1px solid #dce1e5;text-align:right}
+.comparison-table th:first-child,.comparison-table td:first-child{text-align:left}
+.annual-cards{display:grid;gap:18px}.annual-card{padding:20px;border:1px solid #d9e0e6;border-radius:14px;background:#fff;box-shadow:0 4px 14px rgba(20,28,40,.07)}.annual-card.total-card{border-color:#94bde7;background:#f3f8fe}.annual-card__header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding-bottom:14px;border-bottom:1px solid #dfe5ea}.annual-card__header h3{margin:0;font-size:1.25rem}.annual-card__totals{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px 18px;color:#52606c;font-size:.88rem}.month-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}.month-cell{padding:12px;border:1px solid #e2e7eb;border-radius:10px;background:#fafbfc}.month-cell>strong{display:block;margin-bottom:9px}.mini-row{display:grid;grid-template-columns:50px minmax(60px,1fr) auto;align-items:center;gap:7px;margin-top:7px;font-size:.76rem}.mini-track{height:12px;overflow:hidden;border-radius:6px;background:#e8edf1}.mini-track i{display:block;height:100%;border-radius:6px}.mini-track .current-fill{background:#3478c7}.mini-track .previous-fill{background:#aeb8c2}.mini-value{font-weight:700;white-space:nowrap}.month-difference{display:block;margin-top:8px;color:#66727c;font-size:.76rem;text-align:right}
+.annual-chart-scroll{margin-top:16px;overflow-x:auto}.annual-chart{display:grid;grid-template-columns:repeat(12,minmax(64px,1fr));min-width:820px;height:300px;padding:14px 8px 0;border-left:1px solid #cbd3da;border-bottom:1px solid #cbd3da;background:repeating-linear-gradient(to bottom,rgba(116,130,143,.17) 0,rgba(116,130,143,.17) 1px,transparent 1px,transparent 25%)}.annual-month{display:grid;grid-template-rows:1fr 38px;min-width:0;border-right:1px solid rgba(116,130,143,.17)}.annual-bars{display:flex;align-items:flex-end;justify-content:center;gap:4px;min-height:0;padding:0 5px}.annual-vbar{position:relative;width:min(28px,42%);min-height:2px;border-radius:2px 2px 0 0}.annual-vbar.current{background:#3478c7}.annual-vbar.previous{background:#aeb8c2}.annual-vbar:hover{filter:brightness(.96)}.annual-vbar span{position:absolute;left:50%;bottom:calc(100% + 4px);z-index:2;display:none;transform:translateX(-50%);padding:3px 6px;border-radius:5px;background:#26313c;color:#fff;font-size:.68rem;white-space:nowrap}.annual-vbar:hover span{display:block}.annual-month-label{display:flex;align-items:center;justify-content:center;color:#58636d;font-weight:700;font-size:.82rem}
+.annual-vbar span{top:6px;bottom:auto;box-shadow:0 2px 6px rgba(20,28,40,.25)}
+.annual-cards,.annual-card{min-width:0;max-width:100%}.annual-card{overflow:hidden}.annual-chart-scroll{display:block;width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}.annual-chart{width:max-content;box-sizing:border-box}
+@media(max-width:700px){.analysis-wrap{width:calc(100vw - 28px);max-width:100%}.year-form{align-items:stretch;flex-direction:column}
+.annual-card__header{flex-direction:column}.annual-card__totals{justify-content:flex-start}.month-grid{grid-template-columns:1fr 1fr}.mini-row{grid-template-columns:46px 1fr}.mini-value{grid-column:2;text-align:right}
+}
+@media(max-width:480px){.month-grid{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+<header th:replace="~{fragments :: header}">
+</header>
+<main>
+<div class="title-area">
+<h1>前年対比</h1>
+</div>
+<div class="analysis-wrap">
+<section class="panel">
+<form class="year-form" method="get" th:action="@{/group/analysis/year-comparison}">
+<label>対象年<input type="number" name="year" min="2001" max="2100" th:value="${year}" required>
+</label>
+<button>表示</button>
+</form>
+</section>
+<section class="panel">
+<h2>カテゴリー別対比（年間）</h2>
+<div class="legend">
+<span class="current" th:text="${year+'年'}">
+</span>
+<span class="previous" th:text="${previousYear+'年'}">
+</span>
+</div>
+<div class="annual-cards">
+<article class="annual-card" th:each="card:${annualCards}" th:classappend="${card.totalCard}?' total-card':''">
+<div class="annual-card__header"><h3 th:text="${card.name}">カテゴリー</h3><div class="annual-card__totals"><span th:text="|${year}年 ${#numbers.formatInteger(card.current,1,'COMMA')}円|"></span><span th:text="|${previousYear}年 ${#numbers.formatInteger(card.previous,1,'COMMA')}円|"></span><span th:text="|前年差 ${#numbers.formatInteger(card.difference,1,'COMMA')}円|"></span></div></div>
+<div class="annual-chart-scroll"><div class="annual-chart">
+<div class="annual-month" th:each="month:${card.months}">
+<div class="annual-bars">
+<div class="annual-vbar current" th:style="|height:${month.current_width}%|" th:title="|${year}年 ${#numbers.formatInteger(month.current,1,'COMMA')}円|"><span th:text="|${#numbers.formatInteger(month.current,1,'COMMA')}円|">0円</span></div>
+<div class="annual-vbar previous" th:style="|height:${month.previous_width}%|" th:title="|${previousYear}年 ${#numbers.formatInteger(month.previous,1,'COMMA')}円|"><span th:text="|${#numbers.formatInteger(month.previous,1,'COMMA')}円|">0円</span></div>
+</div><span class="annual-month-label" th:text="|${month.month}月|">1月</span>
+</div>
+</div></div>
+</article>
+</div>
+</section>
+</div>
+</main>
+<footer th:replace="~{fragments :: footer}">
+</footer>
+</body>
+</html>
+

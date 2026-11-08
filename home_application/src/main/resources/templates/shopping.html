@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>購入データ入力</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/polish.css}">
+    <link rel="stylesheet" th:href="@{/css/actions.css}">
+    <style>
+        .entry-wrap {
+            width: min(1100px, 80vw);
+            margin: auto
+        }
+
+        .pattern-bar {
+            display: flex;
+            gap: 8px;
+            overflow: auto;
+            padding: 4px 2px 14px
+        }
+
+        .pattern-button {
+            white-space: nowrap;
+            background: #eef1f4;
+            color: #28323c
+        }
+
+        .entry-form {
+            display: grid;
+            gap: 16px
+        }
+
+        .entry-grid {
+            display: grid;
+            grid-template-columns:1fr;
+            gap: 16px
+        }
+
+        .entry-grid > label { width: 50%; }
+
+        .entry-grid .label-title {
+            display: inline-flex;
+            align-items: baseline;
+            width: max-content;
+        }
+
+        .pair-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            width: 100%;
+        }
+
+        .pair-row > label { width: 100%; }
+
+        .entry-grid > label > .required,
+        .pair-row > label > .required,
+        .entry-grid .label-title .required {
+            display: inline;
+            margin-left: .35em;
+            color: #dc3545 !important;
+            font-size: .6em;
+            font-weight: 700;
+            line-height: 1;
+            vertical-align: middle;
+        }
+
+        .full {
+            grid-column: 1/-1;
+            width: 100% !important
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end
+        }
+
+        .amount-button {
+            width: 100%;
+            text-align: right;
+            background: #fff;
+            color: #1f2933;
+            border: 1px solid #bbc4ce
+        }
+
+        .amount-dialog {
+            width: min(460px, calc(100vw - 28px));
+            border: 0;
+            border-radius: 14px;
+            padding: 0
+        }
+
+        .amount-dialog::backdrop {
+            background: rgba(20, 28, 40, .48);
+            backdrop-filter: blur(4px)
+        }
+
+        .amount-body {
+            padding: 24px
+        }
+
+        .amount-body input {
+            font-size: 1.4rem;
+            text-align: right
+        }
+
+        .quick-amounts {
+            display: grid;
+            grid-template-columns:repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 14px
+        }
+
+        .amount-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 18px
+        }
+
+        .check-select {
+            min-height: 130px
+        }
+
+        .history-panel { margin-top: 20px; }
+        .history-scroll { overflow: auto; }
+        .history-table { width: 100%; min-width: 1050px; }
+        .history-table th, .history-table td { white-space: nowrap; }
+        .history-table tbody tr { cursor: pointer; }
+        .history-table tbody tr:hover { background: #f3f7fa; }
+        .history-table tbody tr.settled { background: #eceff1; color: #707980; }
+        .history-table a { font-weight: 700; }
+        .history-empty { margin: 0; padding: 18px; color: #68737e; text-align: center; }
+
+        @media (max-width: 700px) {
+            .entry-wrap {
+                width: 94vw
+            }
+
+            .entry-grid {
+                grid-template-columns:1fr
+            }
+
+            .entry-grid > label { width: 100%; }
+
+            .pair-row { grid-template-columns: 1fr; }
+
+            .full {
+                grid-column: auto
+            }
+        }
+    </style>
+</head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main>
+    <div class="title-area"><h1>購入データ入力</h1></div>
+    <div class="entry-wrap">
+        <div class="success" th:if="${param.created}">購入データを登録しました。</div>
+        <div class="alert" th:if="${param.error}"
+             th:text="${param.error[0]=='closed'?'月次確定済みの月には登録できません。':'入力内容を確認してください。'}"></div>
+        <section class="panel"><h2>購入データ入力パターン</h2>
+            <div class="pattern-bar">
+                <button type="button" class="pattern-button" th:each="p:${patterns}" th:text="${p.display_name}"
+                        th:attr="data-category=${p.category_ids},data-type=${p.transaction_type},data-payment=${p.payment_method_ids},data-amount=${p.amount},data-member=${p.member_ids},data-settlement=${p.settlement_status},data-labels=${p.label_ids},data-note=${p.note}"></button>
+                <span th:if="${#lists.isEmpty(patterns)}">登録済みの入力パターンはありません。</span></div>
+        </section>
+            <form id="entry-form" class="entry-form" method="post" th:action="@{/shopping}">
+                <section class="panel"><h2>購入データ入力</h2>
+                <div class="entry-grid">
+                    <label><span class="label-title">購入日 <span class="required">必須</span></span><input type="date" name="shoppingDate" th:value="${today}" required></label>
+                    <label><span class="label-title">購入者（メンバー） <span class="required">必須</span></span><select name="memberId" required>
+                        <option th:each="x:${members}" th:value="${x.id}" th:text="${x.name}" th:selected="${x.id==currentUserId}"></option>
+                    </select></label>
+                    <label><span class="label-title">カテゴリー <span class="required">必須</span></span><select name="categoryId" required>
+                        <option value="">選択してください</option>
+                        <option th:each="x:${categories}" th:value="${x.id}" th:text="${x.name}"></option>
+                    </select></label>
+                    <div class="pair-row">
+                        <label><span class="label-title">種別 <span class="required">必須</span></span><select name="type" required><option value="EXPENSE">支出</option><option value="INCOME">収入</option></select></label>
+                        <label><span class="label-title">支払い方法 <span class="required">必須</span></span><select name="paymentMethodId" required><option th:each="x:${payments}" th:value="${x.id}" th:text="${x.name}"></option></select></label>
+                    </div>
+                    <div class="pair-row">
+                        <label><span class="label-title">金額 <span class="required">必須</span></span><input type="hidden" name="amount" id="amount" value="1"><button type="button" class="amount-button" id="amount-open">1円</button></label>
+                        <label><span class="label-title">精算 <span class="required">必須</span></span><select name="settlement" required><option value="UNSETTLED">未精算</option><option value="SETTLED">精算済</option></select></label>
+                    </div>
+                    <label class="full">ラベル<select class="check-select" name="labelIds" multiple
+                                                                   data-select-threshold="1"
+                                                                   data-search-placeholder="ラベルを検索・選択">
+                    <option th:each="x:${labels}" th:value="${x.id}" th:text="${x.name}"></option>
+                </select></label>
+                    <label class="full">備考<textarea name="remarks" maxlength="500"></textarea></label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">登録</button>
+                </div>
+            </form>
+        </section>
+        <section class="panel history-panel">
+            <h2>入力履歴</h2>
+            <p class="history-empty" th:if="${#lists.isEmpty(recentPurchases)}">購入データの入力履歴はありません。</p>
+            <div class="history-scroll" th:if="${!#lists.isEmpty(recentPurchases)}">
+                <table class="history-table">
+                    <thead><tr><th>入力日時</th><th>購入日</th><th>購入者</th><th>カテゴリー</th><th>種別</th><th>支払い方法</th><th>金額</th><th>精算</th><th>状態</th></tr></thead>
+                    <tbody><tr th:each="r:${recentPurchases}" th:classappend="${r.settlement==2}?' settled':''" th:attr="data-url=@{|/group/purchases/${r.id}|}">
+                        <td th:text="${#dates.format(r.create_date,'yyyy/MM/dd HH:mm:ss')}"></td>
+                        <td><a th:href="@{|/group/purchases/${r.id}|}" th:text="${#dates.format(r.shopping_date,'yyyy/MM/dd')}"></a></td>
+                        <td th:text="${r.user_name?:'-'}"></td><td th:text="${r.category_name?:'-'}"></td><td th:text="${r.type==2?'収入':'支出'}"></td><td th:text="${r.payment_name?:'-'}"></td>
+                        <td th:text="|${#numbers.formatInteger(r.amount,1,'COMMA')}円|"></td><td th:text="${r.settlement==2?'精算済':'未精算'}"></td><td th:text="${r.fixed_flag==1?'月次確定済み':'編集可能'}"></td>
+                    </tr></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</main>
+<footer th:replace="~{fragments :: footer}"></footer>
+<dialog id="amount-dialog" class="amount-dialog">
+    <div class="amount-body"><h2>金額入力</h2><input id="amount-input" type="number" min="1" max="2147483647" value="1">
+        <div class="quick-amounts">
+            <button type="button" data-add="100">＋100</button>
+            <button type="button" data-add="500">＋500</button>
+            <button type="button" data-add="1000">＋1,000</button>
+            <button type="button" data-add="5000">＋5,000</button>
+            <button type="button" data-add="10000">＋10,000</button>
+            <button type="button" class="secondary" id="amount-clear">クリア</button>
+        </div>
+        <div class="amount-actions">
+            <button type="button" class="secondary" id="amount-cancel">キャンセル</button>
+            <button type="button" id="amount-set">設定</button>
+        </div>
+    </div>
+</dialog>
+<script>
+    (() => {
+        const form = document.getElementById('entry-form'), hidden = document.getElementById('amount'),
+            display = document.getElementById('amount-open'), dialog = document.getElementById('amount-dialog'),
+            input = document.getElementById('amount-input');
+        const setAmount = v => {
+            v = Math.max(1, Number(v) || 1);
+            hidden.value = v;
+            display.textContent = v.toLocaleString('ja-JP') + '円'
+        };
+        display.onclick = () => {
+            input.value = hidden.value;
+            dialog.showModal();
+            input.focus();
+            input.select()
+        };
+        document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => input.value = (Number(input.value) || 0) + Number(b.dataset.add));
+        document.getElementById('amount-clear').onclick = () => input.value = '';
+        document.getElementById('amount-cancel').onclick = () => dialog.close();
+        document.getElementById('amount-set').onclick = () => {
+            setAmount(input.value);
+            dialog.close()
+        };
+        const values = (select, csv) => {
+            if (!csv) return;
+            const a = csv.split(',').filter(Boolean);
+            [...select.options].forEach(o => o.selected = a.includes(o.value));
+            select.dispatchEvent(new Event('change', {bubbles: true}))
+        };
+        const value = (select, csv) => {
+            if (!csv) return;
+            const next = csv.split(',')[0];
+            if (![...select.options].some(option => option.value === next)) return;
+            select.value = next;
+            select.dispatchEvent(new Event('change', {bubbles: true}))
+        };
+        document.querySelectorAll('.pattern-button').forEach(b => b.onclick = () => {
+            value(form.categoryId, b.dataset.category);
+            value(form.type, b.dataset.type);
+            value(form.paymentMethodId, b.dataset.payment);
+            if (b.dataset.amount) setAmount(b.dataset.amount);
+            value(form.memberId, b.dataset.member);
+            value(form.settlement, b.dataset.settlement);
+            values(form.labelIds, b.dataset.labels);
+            if (b.dataset.note) form.remarks.value = b.dataset.note
+        });
+        document.querySelectorAll('.history-table tbody tr').forEach(row=>row.addEventListener('click',event=>{if(!event.target.closest('a,button,input'))location.href=row.dataset.url}));
+    })();
+</script>
+</body>
+</html>

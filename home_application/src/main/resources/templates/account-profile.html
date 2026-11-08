@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ユーザー情報</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/theme.css}">
+  <link rel="stylesheet" th:href="@{/css/admin.css}">
+  <link rel="stylesheet" th:href="@{/css/polish.css}">
+  <link rel="stylesheet" th:href="@{/css/actions.css}">
+  <style>.auto-login-actions{display:flex;justify-content:flex-end}.auto-login-result{display:grid;gap:8px}.auto-login-result-row{display:flex;gap:8px}.auto-login-result-row input{min-width:0}.auto-login-dialog{width:min(620px,calc(100vw - 28px));padding:0;border:0;border-radius:14px}.auto-login-dialog::backdrop{background:rgba(20,28,40,.48);backdrop-filter:blur(4px)}.auto-login-dialog-body{display:grid;gap:18px;padding:24px}.auto-login-dialog-actions{display:flex;justify-content:flex-end;gap:10px}.security-note{color:#66717c;font-size:.88rem;line-height:1.6}@media(max-width:600px){.auto-login-result-row{flex-direction:column}.auto-login-result-row button{width:100%}}</style>
+</head>
+<body th:classappend="${isAdmin}?'admin-page'">
+<th:block th:if="${isAdmin}"><header th:replace="~{fragments :: admin-header}"></header></th:block>
+<th:block th:unless="${isAdmin}"><header th:replace="~{fragments :: header}"></header></th:block>
+<main>
+  <div class="title-area"><h1>ユーザー情報</h1></div>
+  <div class="success" th:if="${param.saved}">ユーザー情報を更新しました。</div>
+  <div class="alert" th:if="${error}" th:text="${error}"></div>
+  <section class="panel">
+    <form class="registration-form" th:action="@{/account/profile}" method="post" onsubmit="return confirm('ユーザーIDを変更した場合はログアウトします。続行しますか？')">
+      <label>ユーザーID<input name="userId" th:value="${user.user_id}" required pattern="[A-Za-z0-9_-]{4,64}"></label>
+      <label>表示名<input name="userName" th:value="${user.user_name}" required maxlength="100"></label>
+      <hr>
+      <p>パスワードを変更しない場合は空欄にしてください。</p>
+      <label>新しいパスワード<input type="password" name="password" minlength="8" autocomplete="new-password"></label>
+      <label>新しいパスワード（確認）<input type="password" name="confirmation" minlength="8" autocomplete="new-password"></label>
+      <div class="registration-form__actions"><button>更新</button></div>
+    </form>
+  </section>
+  <section class="panel">
+    <h2>自動ログイン用URL</h2>
+    <p>現在のユーザーで自動ログインするURLを生成します。所属グループを表示中の場合は、その所属グループへ直接接続します。</p>
+    <p class="security-note">URLには平文パスワードを含めず、暗号化された専用トークンを使用します。再生成またはパスワード変更を行うと、以前のURLは無効になります。</p>
+    <div class="alert" th:if="${autoLoginError}" th:text="${autoLoginError}"></div>
+    <div class="auto-login-actions"><button type="button" id="auto-login-open">生成</button></div>
+  </section>
+</main>
+<dialog id="auto-login-dialog" class="auto-login-dialog">
+  <form method="post" th:action="@{/account/auto-login-url}" class="auto-login-dialog-body">
+    <h2>本人確認</h2><p>自動ログイン用URLを生成するため、現在のパスワードを入力してください。</p>
+    <label>現在のパスワード<input type="password" name="password" autocomplete="current-password" required></label>
+    <div class="auto-login-dialog-actions"><button type="button" class="secondary" id="auto-login-cancel">キャンセル</button><button>認証して生成</button></div>
+  </form>
+</dialog>
+<dialog id="auto-login-result-dialog" class="auto-login-dialog" th:if="${autoLoginUrl}">
+  <div class="auto-login-dialog-body">
+    <h2>自動ログイン用URLを生成しました</h2>
+    <p class="security-note">このURLはモーダルを閉じると再確認できません。必要な場合は閉じる前にコピーしてください。</p>
+    <div class="auto-login-result"><label>生成されたURL</label><div class="auto-login-result-row"><input id="auto-login-url" readonly th:value="${autoLoginUrl}"><button type="button" class="secondary" id="auto-login-copy">コピー</button></div></div>
+    <div class="auto-login-dialog-actions"><button type="button" id="auto-login-result-close">閉じる</button></div>
+  </div>
+</dialog>
+<script>(()=>{const dialog=document.getElementById('auto-login-dialog'),open=document.getElementById('auto-login-open'),cancel=document.getElementById('auto-login-cancel'),result=document.getElementById('auto-login-result-dialog'),close=document.getElementById('auto-login-result-close'),copy=document.getElementById('auto-login-copy'),url=document.getElementById('auto-login-url');open?.addEventListener('click',()=>dialog.showModal());cancel?.addEventListener('click',()=>dialog.close());copy?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(url.value);copy.textContent='コピー済み'}catch(e){url.select();document.execCommand('copy');copy.textContent='コピー済み'}});const discard=()=>{if(url)url.value='';result?.close();result?.remove()};close?.addEventListener('click',discard);result?.addEventListener('cancel',e=>{e.preventDefault();discard()});result?.showModal()})();</script>
+</body>
+</html>

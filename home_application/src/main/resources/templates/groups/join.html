@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>所属グループ加入申請</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}"><link rel="stylesheet" th:href="@{/css/polish.css}"><link rel="stylesheet" th:href="@{/css/actions.css}">
+</head><body><header th:replace="~{fragments :: header}"></header><main>
+  <div class="title-area"><h1>所属グループ加入申請</h1></div>
+  <form class="attached-search" method="get" th:action="@{/groups/join}"><input name="q" th:value="${q}" placeholder="所属グループIDを入力"><button>検索</button></form>
+  <div class="alert" th:if="${param.error}">所属グループまたはパスワードを確認してください。</div>
+  <section class="version-list"><article class="panel" th:each="g:${groups}"><h2 th:text="${g.group_name}"></h2><p th:text="${g.group_id}"></p>
+    <form class="registration-form" method="post" th:action="@{/groups/join}"><input type="hidden" name="groupId" th:value="${g.group_id}"><label>所属グループパスワード<input type="password" name="password" required></label><div class="registration-form__actions"><button>加入申請</button></div></form>
+  </article><div class="panel empty-state" th:if="${!#strings.isEmpty(q) and #lists.isEmpty(groups)}">該当する所属グループはありません。</div></section>
+</main></body></html>

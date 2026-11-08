@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>システム設定</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}"><link rel="stylesheet" th:href="@{/css/admin.css}"><link rel="stylesheet" th:href="@{/css/polish.css}"><link rel="stylesheet" th:href="@{/css/actions.css}">
+  <style>
+    .system-settings-wrap{width:min(1200px,80vw);margin:auto}.settings-card{margin-bottom:22px}.settings-card form{display:grid;gap:18px}.settings-card__fields{display:grid;gap:0}.setting-row label{grid-template-columns:minmax(220px,1fr) minmax(280px,1.2fr)}.setting-label{display:flex;flex-direction:column;gap:4px}.setting-label small{font-weight:400}.settings-card__actions{display:flex;justify-content:flex-end;gap:10px;padding-top:4px}.token-note{margin:0;color:#65717c;font-size:.85rem}.test-result-message{margin:0;padding:14px 16px;border-radius:9px;line-height:1.7}.test-result-message.success-message{background:#d1e7dd;color:#0f5132}.test-result-message.error-message{background:#f8d7da;color:#842029}@media(max-width:750px){.system-settings-wrap{width:94vw}.setting-row label{grid-template-columns:1fr}.settings-card__actions{flex-wrap:wrap}.settings-card__actions button{flex:1;min-width:150px}}
+  </style>
+</head>
+<body class="admin-page"><header th:replace="~{fragments :: admin-header}"></header><main>
+  <div class="title-area"><h1>システム設定</h1></div>
+  <div class="success test-result" th:if="${param.saved}">設定カードを保存しました。</div>
+  <dialog id="notification-result-dialog" class="confirm-dialog" th:if="${notificationTestSuccess!=null or notificationTestError!=null}">
+    <div class="confirm-dialog__body">
+      <h2 th:text="${notificationTestSuccess!=null?'テスト通知成功':'テスト通知失敗'}">テスト通知結果</h2>
+      <p class="test-result-message success-message" th:if="${notificationTestSuccess!=null}" th:text="${notificationTestSuccess}"></p>
+      <p class="test-result-message error-message" th:if="${notificationTestError!=null}" th:text="${notificationTestError}"></p>
+    </div>
+    <div class="confirm-dialog__actions"><button type="button" class="secondary" onclick="this.closest('dialog').close()">閉じる</button></div>
+  </dialog>
+  <div class="system-settings-wrap">
+    <section class="panel settings-card" th:each="card:${settingCards}" th:if="${!#lists.isEmpty(card.settings)}">
+      <form method="post" class="settings-card-form" th:action="@{|/admin/settings/system/${card.id}|}" th:attr="data-card=${card.id}">
+        <h2 th:text="${card.name}">設定</h2>
+        <div class="settings-card__fields">
+          <div class="setting-row" th:each="s:${card.settings}">
+            <label>
+              <span class="setting-label"><strong th:text="${s.description}"></strong><small th:text="${s.key}"></small></span>
+              <input th:if="${!#strings.contains(s.key,'enabled') and s.key!='line_token'}" th:type="${s.key=='line_url'?'url':'text'}" th:name="${'setting_'+s.key}" th:value="${s.value}">
+              <select th:if="${#strings.contains(s.key,'enabled')}" th:name="${'setting_'+s.key}"><option value="true" th:selected="${s.value=='true'}">有効</option><option value="false" th:selected="${s.value!='true'}">無効</option></select>
+              <input th:if="${s.key=='line_token'}" type="text" th:name="${'setting_'+s.key}" th:value="${s.value}" autocomplete="off">
+            </label>
+          </div>
+        </div>
+        <p class="token-note" th:if="${card.id=='notification'}">LINEトークンを空欄のまま保存した場合は、現在のトークンを保持します。</p>
+        <input th:if="${card.id=='notification'}" type="hidden" name="saveBeforeTest" value="false">
+        <div class="settings-card__actions">
+          <button type="button" class="secondary test-notification" th:if="${card.id=='notification'}" th:formaction="@{/admin/settings/system/notification/test}">テスト通知</button>
+          <button type="submit" class="save-card">このカードを保存</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</main><footer th:replace="~{fragments :: footer}"></footer>
+<script>
+document.querySelectorAll('.settings-card-form').forEach(form=>{
+  const snapshot=()=>[...new FormData(form).entries()].filter(([key])=>key!=='_csrf'&&key!=='saveBeforeTest').map(([key,value])=>key+'='+value).join('&');
+  const initial=snapshot(),save=form.querySelector('.save-card');
+  save.addEventListener('click',event=>{if(!confirm('このカードの設定を保存しますか？'))event.preventDefault()});
+  const test=form.querySelector('.test-notification');
+  if(test)test.addEventListener('click',event=>{const changed=snapshot()!==initial;if(changed&&!confirm('入力値が変更されています。変更内容を保存してからテスト通知を送信してもよいですか？')){event.preventDefault();return}form.querySelector('[name="saveBeforeTest"]').value=String(changed);form.action=test.getAttribute('formaction');form.requestSubmit()});
+});
+const notificationResultDialog=document.getElementById('notification-result-dialog');
+if(notificationResultDialog)notificationResultDialog.showModal();
+</script>
+</body></html>

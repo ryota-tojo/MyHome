@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>表示設定</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}">
+  <link rel="stylesheet" th:href="@{/css/admin.css}"><link rel="stylesheet" th:href="@{/css/polish.css}">
+  <link rel="stylesheet" th:href="@{/css/actions.css}"><link rel="stylesheet" th:href="@{/css/display-settings.css}">
+  <script th:src="@{/js/display-settings.js}" defer></script>
+</head>
+<body class="admin-page">
+<header th:replace="~{fragments :: admin-header}"></header>
+<main>
+  <div class="title-area"><h1>表示設定</h1></div>
+  <div class="success" th:if="${param.saved}">表示設定を保存しました。</div>
+  <div class="success" th:if="${param.reset}">表示設定をデフォルトに戻しました。</div>
+  <div class="success" th:if="${param.fontSaved}">フォントをアップロードしました。各画面のフォント欄から選択できます。</div>
+  <div class="alert" th:if="${param.fontError}">TTFまたはOTF形式で5MB以下のフォントを選択してください。</div>
+  <div class="alert" th:if="${param.validationError}">入力値が不正です。色は #RRGGBB、フォントサイズは10～32で指定してください。</div>
+  <section class="panel">
+    <h2>フォントファイル</h2>
+    <form th:action="@{/admin/settings/font}" method="post" enctype="multipart/form-data">
+      <label>TTF／OTF（最大5MB）<input type="file" name="font" accept=".ttf,.otf,font/ttf,font/otf" required></label>
+      <button>アップロード</button>
+    </form>
+  </section>
+  <section class="panel">
+    <h2>共通設定</h2>
+    <p>管理者画面と一般画面の両方に適用されます。</p>
+    <form th:action="@{/admin/settings/display}" method="post">
+      <div class="setting-row" th:each="s:${commonSettings}">
+        <label><strong th:text="${s.description}"></strong>
+          <input type="number" th:name="${'setting_'+s.key}" th:value="${s.value}"
+                 th:min="${s.key=='ui_scale'?50:10}" th:max="${s.key=='ui_scale'?200:32}" step="1" required>
+        </label>
+      </div>
+      <button>共通設定を保存</button>
+    </form>
+  </section>
+  <div class="display-setting-cards">
+    <section class="panel display-setting-card" th:each="screen : ${ {'admin_','user_'} }" th:with="isAdmin=${screen=='admin_'},prefix=${screen}">
+      <div class="setting-card-heading">
+        <span class="setting-card-icon" th:classappend="${!isAdmin}?' user-icon'" th:text="${isAdmin}?'管':'般'"></span>
+        <div><h2 th:text="${isAdmin}?'管理者画面':'一般画面'"></h2><p th:text="${isAdmin}?'管理メニューと管理画面の表示設定':'家計簿を利用する一般ユーザー画面の表示設定'"></p></div>
+      </div>
+      <form th:action="@{/admin/settings/display}" method="post">
+        <div class="setting-row" th:each="s:${settings}" th:if="${#strings.startsWith(s.key,prefix)}">
+          <label><strong th:text="${s.description}"></strong>
+            <div class="color-control" th:if="${#strings.endsWith(s.key,'_color')}">
+              <input type="color" th:value="${s.value}" th:attr="data-color-target=${'field_'+s.key}" aria-label="カラーピッカー">
+              <input class="color-code" type="text" th:id="${'field_'+s.key}" th:name="${'setting_'+s.key}" th:value="${s.value}" pattern="#[0-9A-Fa-f]{6}" maxlength="7" placeholder="#RRGGBB" required spellcheck="false">
+            </div>
+            <select th:if="${#strings.endsWith(s.key,'_font_family')}" th:name="${'setting_'+s.key}" required>
+              <option value="system-ui" th:selected="${s.value=='system-ui'}">システム標準</option>
+              <option value="sans-serif" th:selected="${s.value=='sans-serif'}">ゴシック</option>
+              <option value="serif" th:selected="${s.value=='serif'}">明朝</option>
+              <option value="monospace" th:selected="${s.value=='monospace'}">等幅</option>
+              <option th:each="font:${uploadedFonts}" th:value="${font.id}" th:text="${font.name}" th:selected="${s.value==font.id}"></option>
+            </select>
+          </label>
+        </div>
+        <button th:text="${isAdmin}?'管理者画面設定を保存':'一般画面設定を保存'"></button>
+      </form>
+    </section>
+  </div>
+  <section class="panel reset-panel">
+    <div><h2>表示設定の初期化</h2><p>両画面の表示設定をまとめて初期値へ戻します。アップロード済みフォントファイルは保持されます。</p></div>
+    <form class="reset-form" th:action="@{/admin/settings/display/reset}" method="post" onsubmit="return confirm('表示設定をデフォルトに戻しますか？')"><button class="secondary">デフォルトに戻す</button></form>
+  </section>
+</main>
+</body>
+</html>

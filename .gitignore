@@ -1,0 +1,10 @@
+.env
+.gradle/
+.idea/
+**/build/
+**/logs/
+**/data/
+*.log
+*.log~
+.DS_Store
+

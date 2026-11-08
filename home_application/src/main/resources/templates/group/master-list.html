@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title th:text="${title}"></title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}">
+  <link rel="stylesheet" th:href="@{/css/polish.css}"><link rel="stylesheet" th:href="@{/css/actions.css}"><link rel="stylesheet" th:href="@{/css/management-components.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main>
+  <div class="title-area"><h1 th:text="${title}"></h1></div>
+  <div class="success management-message" th:if="${param.created}">登録しました。</div>
+  <div class="success management-message" th:if="${param.updated}">更新しました。</div>
+  <div class="success management-message" th:if="${param.deleted}">削除しました。</div>
+  <div class="alert management-message" th:if="${param.error != null}" th:text="${param.error[0]=='last'?'最低1件の有効な項目が必要です。':param.error[0]=='duplicate'?'同じ表示名は登録できません。':param.error[0]=='inUse'?(type=='kanban-lanes'?'タスクが紐づいているレーンは無効化・削除できません。':'購入データなどから参照されているため削除できません。'):param.error[0]=='disableFirst'?'削除する前に無効化してください。':'入力内容を確認してください。'}"></div>
+  <section class="panel management-panel">
+    <div class="master-toolbar"><p class="master-note">左のハンドルをドラッグして表示順を変更できます。</p><button type="button" class="add-button" id="create-open" aria-label="新規登録">＋</button></div>
+    <ul id="sortable" class="sortable-list" data-touch-sortable th:attr="data-order-url=@{/group/masters/{type}/order(type=${type})}">
+      <li class="sortable-item" th:each="item:${items}" th:classappend="${item.disabled_flag==1}?' disabled':''" th:attr="data-id=${item.id}" draggable="true">
+        <span class="drag-handle" aria-label="並び替え">☰</span>
+        <span class="name" th:text="${item.name}"></span>
+        <div class="master-actions">
+          <span class="status-label" th:classappend="${item.disabled_flag==1}?' inactive':' active'" th:text="${item.disabled_flag==1?'無効':'有効'}"></span>
+          <button type="button" class="secondary edit-button" th:attr="data-id=${item.id},data-name=${item.name}" onclick="openEdit(this)">編集</button>
+          <form th:action="@{|/group/masters/${type}/${item.id}/toggle|}" method="post">
+            <button type="submit" class="secondary" th:text="${item.disabled_flag==1?'有効化':'無効化'}"></button>
+          </form>
+          <form th:action="@{|/group/masters/${type}/${item.id}/delete|}" method="post" onsubmit="return confirm('この項目を削除しますか？')"><button type="submit" class="danger" th:disabled="${item.disabled_flag!=1}">削除</button></form>
+        </div>
+      </li>
+    </ul>
+    <p th:if="${#lists.isEmpty(items)}">まだ登録されていません。</p>
+  </section>
+</main>
+<footer th:replace="~{fragments :: footer}"></footer>
+
+<dialog id="create-dialog" class="confirm-dialog">
+  <form id="master-form" method="post" th:action="@{|/group/masters/${type}|}">
+    <div class="confirm-dialog__body"><h2 th:text="${title+'を登録'}"></h2><label>表示名<input id="create-name" name="name" maxlength="100" required autocomplete="off"></label></div>
+    <div class="confirm-dialog__actions"><button type="button" class="secondary" id="create-cancel">キャンセル</button><button type="submit">登録</button></div>
+  </form>
+</dialog>
+<dialog id="edit-dialog" class="confirm-dialog" th:attr="data-base=@{/group/masters/{type}(type=${type})}">
+  <form id="edit-form" method="post" th:action="@{|/group/masters/${type}/placeholder/update|}">
+    <div class="confirm-dialog__body"><h2>表示名を編集</h2><label>表示名 <span class="required">必須</span><input id="edit-name" name="name" maxlength="100" required></label></div>
+    <div class="confirm-dialog__actions"><button type="button" class="secondary" id="edit-cancel">キャンセル</button><button type="submit">更新</button></div>
+  </form>
+</dialog>
+<script th:inline="javascript">
+  const list=document.getElementById('sortable');let dragged=null;
+  list?.addEventListener('dragstart',e=>{dragged=e.target.closest('.sortable-item');dragged?.classList.add('dragging')});
+  list?.addEventListener('dragend',()=>{dragged?.classList.remove('dragging');dragged=null;saveOrder()});
+  list?.addEventListener('dragover',e=>{e.preventDefault();const target=e.target.closest('.sortable-item');if(!dragged||!target||target===dragged)return;const r=target.getBoundingClientRect();list.insertBefore(dragged,e.clientY<r.top+r.height/2?target:target.nextSibling)});
+  function saveOrder(){const body=new URLSearchParams();[...list.children].forEach(x=>body.append('ids',x.dataset.id));const csrf=document.querySelector('#master-form input[name="_csrf"]');if(csrf)body.append(csrf.name,csrf.value);fetch(/*[[@{/group/masters/{type}/order(type=${type})}]]*/'',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body}).then(r=>{if(!r.ok)location.reload()})}
+  const dialog=document.getElementById('edit-dialog'),editForm=document.getElementById('edit-form'),editName=document.getElementById('edit-name');
+  const createDialog=document.getElementById('create-dialog'),createName=document.getElementById('create-name');
+  document.getElementById('create-open').addEventListener('click',()=>{createDialog.showModal();requestAnimationFrame(()=>createName.focus())});
+  document.getElementById('create-cancel').addEventListener('click',()=>createDialog.close());
+  function openEdit(button){editName.value=button.dataset.name;editForm.action=dialog.dataset.base+'/'+encodeURIComponent(button.dataset.id)+'/update';dialog.showModal();requestAnimationFrame(()=>{editName.focus();editName.select()})}
+  document.getElementById('edit-cancel').addEventListener('click',()=>dialog.close());
+  const retainedMode=/*[[${formMode}]]*/ null,retainedName=/*[[${formName}]]*/ null,retainedId=/*[[${formId}]]*/ null;
+  if(retainedMode==='create'){createName.value=retainedName||'';createDialog.showModal();requestAnimationFrame(()=>createName.focus())}
+  if(retainedMode==='edit'){editName.value=retainedName||'';editForm.action=dialog.dataset.base+'/'+encodeURIComponent(retainedId)+'/update';dialog.showModal();requestAnimationFrame(()=>editName.focus())}
+</script>
+</body></html>

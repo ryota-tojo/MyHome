@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>購入データ管理</title>
+<link rel="stylesheet" th:href="@{/css/app.css}">
+<link rel="stylesheet" th:href="@{/theme.css}">
+<link rel="stylesheet" th:href="@{/css/polish.css}">
+<link rel="stylesheet" th:href="@{/css/actions.css}">
+<style>
+.manage-wrap{width:min(1500px,94vw);margin:auto}
+.data-table tbody tr.reference-warning-row{background:#fff0f1}.data-table tbody tr.reference-warning-row:hover{background:#ffe1e4}.reference-warning-row .locked{color:#c52f45;font-weight:700}
+.list-toolbar{display:flex;justify-content:flex-end;margin-bottom:18px}
+.purchase-search-dialog{width:min(760px,calc(100vw - 28px));max-height:90vh;padding:0;border:0;border-radius:14px;overflow:auto}
+.purchase-search-dialog::backdrop{background:rgba(20,28,40,.48);backdrop-filter:blur(4px)}
+.search-form{display:grid;gap:16px;padding:26px}
+.search-form h2{margin:0}
+.pattern-block{display:grid;gap:8px}
+.pattern-block>span{font-weight:600}
+.pattern-bar{display:flex;gap:8px;overflow:auto}
+.pattern-button{white-space:nowrap;background:#eef1f4;color:#26313c}
+.search-fields{display:grid;grid-template-columns:1fr;gap:15px}
+.search-fields>.half{width:50%}
+.search-fields>.search-pair{display:grid;grid-template-columns:1fr 1fr;gap:15px;width:100%}
+.search-fields>.search-pair>label{width:100%}
+.search-fields>.full{width:100%}
+.search-actions{position:sticky;bottom:0;background:#fff;padding-top:12px}
+.search-actions,.bulk-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+.summary-action-row{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;gap:18px;width:min(1298px,100%);margin:0 auto 18px}
+.selection-card{display:flex;flex-direction:column;width:100%;box-sizing:border-box;margin:0;padding:18px 22px;background:#fff;border:1px solid #dbe3e9;border-radius:14px;box-shadow:0 4px 14px #2233440b}
+.selection-card .bulk-actions{align-items:center;margin-top:auto;padding-top:16px}
+.selection-card .bulk-actions{width:100%}
+.selection-card .selected-total{margin-right:auto}
+.summary-title{min-height:28px;margin:0 0 14px;font-size:1.15rem;line-height:28px}
+.summary-card{display:flex;flex-direction:column;width:100%;box-sizing:border-box;background:#fff;border:1px solid #dbe3e9;border-radius:14px;padding:18px 22px;margin:0;box-shadow:0 4px 14px #2233440b}
+.summary-header{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:58px;padding-bottom:14px;border-bottom:1px solid #e1e6ea}
+.summary-label{color:#66727c}
+.summary-value{font-size:1.45rem;font-weight:700}
+.summary-value.negative,.payment-total.negative{color:#d9364f}
+.summary-count{color:#66727c;font-size:.9rem}
+.payment-summary-list{display:flex;flex:1;flex-direction:column;gap:2px;padding-top:14px}
+.payment-summary-item{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:45px;padding:10px 0;border-bottom:1px solid #edf0f2}
+.payment-summary-item:last-child{border-bottom:0}
+.payment-name{font-weight:600}
+.payment-count{color:#77818a;font-size:.82rem;margin-left:5px}
+.payment-total{font-weight:700;white-space:nowrap}
+.empty-summary{color:#77818a;padding-top:14px}
+.table-scroll{overflow:auto}
+.data-table{width:100%;min-width:1050px;border-collapse:collapse}
+.data-table th,.data-table td{padding:11px 10px;border-bottom:1px solid #dbe0e4;white-space:nowrap}
+.data-table tbody tr{cursor:pointer}
+.data-table tbody tr:hover{background:#f3f5f7}
+.data-table tbody tr.settled-row,.data-table tbody tr.settled-row:hover{background:#eceff1;color:#707980}
+.select-cell{width:58px;min-width:58px;text-align:center;cursor:pointer}
+.select-cell input[type="checkbox"]{display:block;width:22px;height:22px;margin:0 auto;cursor:pointer}
+.selected-total{font-size:1.1rem;font-weight:700}
+.locked{color:#7a8288}
+.multi{min-height:105px}
+@media(max-width:700px){.search-fields>.half{width:100%}
+.search-fields>.search-pair{grid-template-columns:1fr}
+.search-form{padding:26px 18px}
+.summary-action-row{grid-template-columns:1fr}
+.selection-card .bulk-actions{flex-wrap:wrap}
+.selection-card .selected-total{width:100%;margin:0 0 4px}
+}
+@media(max-width:520px){.summary-header{align-items:flex-start;flex-direction:column;gap:8px}
+.payment-summary-list{grid-template-columns:1fr}
+}
+
+</style>
+</head>
+<body>
+<header th:replace="~{fragments :: header}">
+</header>
+<main>
+<div class="title-area">
+<h1>購入データ管理</h1>
+</div>
+<div class="manage-wrap">
+<div class="success" th:if="${param.settled}">選択データを精算済みにしました。</div>
+<div class="success" th:if="${param.deleted}">削除可能な選択データを削除しました。</div>
+<div class="alert" th:if="${invalidReferenceCount>0}" th:text="|無効または削除済みのメンバー・カテゴリー・支払い方法・ラベルを使用している未確定データが${invalidReferenceCount}件あります。対象行を開いて入力し直してください。|"></div>
+<div class="list-toolbar">
+<button type="button" id="open-search">検索条件を設定</button>
+</div>
+<dialog id="search-dialog" class="purchase-search-dialog">
+<form id="search-form" class="search-form" method="get" th:action="@{/group/purchases}">
+<h2>検索条件</h2>
+<div class="pattern-block" th:if="${!#lists.isEmpty(patterns)}">
+<span>購入データ検索パターン</span>
+<div class="pattern-bar"><button type="button" class="pattern-button" th:each="p:${patterns}" th:text="${p.display_name}" th:attr="data-from=${p.date_from},data-to=${p.date_to},data-amount-from=${p.amount_from},data-amount-to=${p.amount_to},data-categories=${p.category_ids},data-type=${p.transaction_type},data-payments=${p.payment_method_ids},data-members=${p.member_ids},data-settlement=${p.settlement_status},data-labels=${p.label_ids},data-note=${p.note}"></button></div>
+</div>
+<div class="search-fields">
+<div class="search-pair">
+<label>購入日（From）<input type="date" name="dateFrom" th:value="${filters.getFirst('dateFrom')}">
+</label>
+<label>購入日（To）<input type="date" name="dateTo" th:value="${filters.getFirst('dateTo')}">
+</label>
+</div>
+<div class="search-pair">
+<label>金額（From）<input type="number" name="amountFrom" min="0" step="1" th:value="${filters.getFirst('amountFrom')}" placeholder="0以上">
+</label>
+<label>金額（To）<input type="number" name="amountTo" min="0" step="1" th:value="${filters.getFirst('amountTo')}" placeholder="0以上">
+</label>
+</div>
+<label class="half">購入者（メンバー）<select class="multi" name="memberIds" multiple data-select-threshold="1" data-search-placeholder="購入者を検索・選択">
+<option th:each="x:${members}" th:value="${x.id}" th:text="${x.name}" th:selected="${filters.get('memberIds')!=null and filters.get('memberIds').contains(x.id)}"></option>
+</select></label>
+<label class="half">カテゴリー<select class="multi" name="categoryIds" multiple data-select-threshold="1" data-search-placeholder="カテゴリーを検索・選択">
+<option th:each="x:${categories}" th:value="${x.id}" th:text="${x.name}" th:selected="${filters.get('categoryIds')!=null and filters.get('categoryIds').contains(x.id)}"></option>
+</select></label>
+<div class="search-pair">
+<label>種別<select name="type">
+<option value="">すべて</option>
+<option value="EXPENSE" th:selected="${filters.getFirst('type')=='EXPENSE'}">支出</option>
+<option value="INCOME" th:selected="${filters.getFirst('type')=='INCOME'}">収入</option>
+</select>
+</label>
+<label>支払い方法<select class="multi" name="paymentIds" multiple data-select-threshold="1" data-search-placeholder="支払い方法を検索・選択">
+<option th:each="x:${payments}" th:value="${x.id}" th:text="${x.name}" th:selected="${filters.get('paymentIds')!=null and filters.get('paymentIds').contains(x.id)}">
+</option>
+</select>
+</label>
+</div>
+<label class="half">精算<select name="settlement">
+<option value="">すべて</option>
+<option value="UNSETTLED" th:selected="${filters.getFirst('settlement')=='UNSETTLED'}">未精算</option>
+<option value="SETTLED" th:selected="${filters.getFirst('settlement')=='SETTLED'}">精算済</option>
+</select>
+</label>
+<label class="full">ラベル<select class="multi" name="labelIds" multiple data-select-threshold="1" data-search-placeholder="ラベルを検索・選択">
+<option th:each="x:${labels}" th:value="${x.id}" th:text="${x.name}" th:selected="${filters.get('labelIds')!=null and filters.get('labelIds').contains(x.id)}">
+</option>
+</select>
+</label>
+<label class="full">備考<input name="remarks" th:value="${filters.getFirst('remarks')}" placeholder="部分一致">
+</label>
+</div>
+<div class="search-actions">
+<button type="button" class="secondary" onclick="this.closest('dialog').close()">キャンセル</button>
+<a class="button secondary" th:href="@{/group/purchases}">検索条件リセット</a>
+<button>検索</button>
+</div>
+</form>
+</dialog>
+<form method="post" id="bulk-form" th:action="@{/group/purchases/settle}" autocomplete="off">
+<div class="summary-action-row">
+<section class="summary-card" aria-label="検索結果の合計">
+<h2 class="summary-title">検索結果の集計</h2>
+<div class="summary-header">
+<div><span class="summary-label">合計金額（支出 − 収入）</span><span class="summary-count" th:text="|（${#numbers.formatInteger(summary.count,1,'COMMA')}件）|">（0件）</span></div>
+<strong class="summary-value" th:classappend="${summary.total < 0} ? ' negative'" th:text="|${#numbers.formatInteger(summary.total,1,'COMMA')}円|">0円</strong>
+</div>
+<div class="payment-summary-list" th:if="${!summary.payments.isEmpty()}">
+<div class="payment-summary-item" th:each="payment:${summary.payments}">
+<div><span class="payment-name" th:text="${payment.name}">現金</span><span class="payment-count" th:text="|${#numbers.formatInteger(payment.count,1,'COMMA')}件|">0件</span></div>
+<strong class="payment-total" th:classappend="${payment.total < 0} ? ' negative'" th:text="|${#numbers.formatInteger(payment.total,1,'COMMA')}円|">0円</strong>
+</div>
+</div>
+<div class="empty-summary" th:if="${summary.payments.isEmpty()}">対象データがありません。</div>
+</section>
+<section class="selection-card" aria-label="選択中データの操作">
+<h2 class="summary-title">選択中の集計</h2>
+<div class="summary-header">
+<div><span class="summary-label">合計金額（支出 − 収入）</span><span class="summary-count">（<strong id="selected-count">0</strong>件）</span></div>
+<strong class="summary-value" id="selected-sum">0円</strong>
+</div>
+<div class="payment-summary-list" id="selected-payment-list"></div>
+<div class="empty-summary" id="selected-empty" hidden></div>
+<div class="bulk-actions">
+<button th:formaction="@{/group/purchases/settle}" onclick="return selected()">一括精算済み</button>
+<button class="danger" th:formaction="@{/group/purchases/delete}" onclick="return selected()&&confirm('未精算の選択データを削除しますか？')">一括削除</button>
+</div>
+</section>
+</div>
+<section class="panel">
+<div class="table-scroll">
+<table class="data-table">
+<thead>
+<tr>
+<th class="select-cell" title="すべて選択・解除">
+<input type="checkbox" id="check-all" autocomplete="off">
+</th>
+<th>購入日</th>
+<th>種別</th>
+<th>カテゴリー</th>
+<th>支払い方法</th>
+<th>メンバー</th>
+<th>精算</th>
+<th>金額</th>
+<th>備考</th>
+<th>状態</th>
+</tr>
+</thead>
+<tbody>
+<tr th:each="r:${rows}" th:attr="data-url=@{|/group/purchases/${r.id}|}" th:classappend="${r.fixed_flag!=1 and r.reference_warning==1}?' reference-warning-row':(${r.settlement==2}?' settled-row':'')">
+<td class="select-cell" title="選択・解除">
+<input class="row-check" type="checkbox" name="ids" autocomplete="off" th:value="${r.id}" th:attr="data-amount=${r.amount},data-type=${r.type},data-payment=${r.payment_name?:'未設定'}">
+</td>
+<td th:text="${#dates.format(r.shopping_date,'yyyy/MM/dd')}">
+</td>
+<td th:text="${r.type==1?'支出':'収入'}">
+</td>
+<td th:text="${r.category_name}">
+</td>
+<td th:text="${r.payment_name?:'-'}">
+</td>
+<td th:text="${r.user_name}">
+</td>
+<td th:text="${r.settlement==2?'精算済':'未精算'}">
+</td>
+<td th:text="|${#numbers.formatInteger(r.amount,1,'COMMA')}円|">
+</td>
+<td th:text="${r.remarks}">
+</td>
+<td class="locked" th:text="${r.fixed_flag==1?'確定済':r.reference_warning==1?'要修正':'編集可'}">
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</form>
+</div>
+</main>
+<footer th:replace="~{fragments :: footer}">
+</footer>
+<script>
+document.getElementById('check-all').checked=false;
+
+document.querySelectorAll('.row-check').forEach(check=>check.checked=false);
+
+(()=>{const form=document.getElementById('search-form'),dialog=document.getElementById('search-dialog');
+document.getElementById('open-search').onclick=()=>dialog.showModal();
+const set=(s,c)=>{const a=(c||'').split(',');
+[...s.options].forEach(o=>o.selected=a.includes(o.value));
+s.dispatchEvent(new Event('change',{bubbles:true}))};
+document.querySelectorAll('.pattern-button').forEach(b=>b.onclick=()=>{form.dateFrom.value=b.dataset.from||'';
+form.dateTo.value=b.dataset.to||'';
+form.amountFrom.value=b.dataset.amountFrom||'';
+form.amountTo.value=b.dataset.amountTo||'';
+form.type.value=b.dataset.type||'';
+set(form.categoryIds,b.dataset.categories);
+set(form.paymentIds,b.dataset.payments);
+set(form.memberIds,b.dataset.members);
+form.settlement.value=b.dataset.settlement||'';
+set(form.labelIds,b.dataset.labels);
+form.remarks.value=b.dataset.note||'';
+form.submit()});
+const checks=[...document.querySelectorAll('.row-check')],count=document.getElementById('selected-count'),sum=document.getElementById('selected-sum'),paymentList=document.getElementById('selected-payment-list'),empty=document.getElementById('selected-empty');
+const calc=()=>{const on=checks.filter(x=>x.checked),groups=new Map();
+checks.forEach(x=>{const name=x.dataset.payment||'未設定';if(!groups.has(name))groups.set(name,{count:0,total:0})});
+let total=0;
+on.forEach(x=>{const signed=(x.dataset.type==='2'?-1:1)*Number(x.dataset.amount),name=x.dataset.payment||'未設定',current=groups.get(name)||{count:0,total:0};
+current.count++;
+current.total+=signed;
+groups.set(name,current);
+total+=signed});
+count.textContent=on.length;
+sum.textContent=total.toLocaleString('ja-JP')+'円';
+sum.classList.toggle('negative',total<0);
+paymentList.replaceChildren();
+[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ja')).forEach(([name,value])=>{const item=document.createElement('div');
+item.className='payment-summary-item';
+const info=document.createElement('div'),paymentName=document.createElement('span'),paymentCount=document.createElement('span'),paymentTotal=document.createElement('strong');
+paymentName.className='payment-name';
+paymentName.textContent=name;
+paymentCount.className='payment-count';
+paymentCount.textContent=value.count.toLocaleString('ja-JP')+'件';
+paymentTotal.className='payment-total';
+paymentTotal.classList.toggle('negative',value.total<0);
+paymentTotal.textContent=value.total.toLocaleString('ja-JP')+'円';
+info.append(paymentName,paymentCount);
+item.append(info,paymentTotal);
+paymentList.append(item)});
+empty.hidden=true};
+checks.forEach(x=>x.onchange=calc);
+document.querySelectorAll('.select-cell').forEach(cell=>cell.onclick=e=>{e.stopPropagation();const box=cell.querySelector('input[type="checkbox"]');if(e.target!==box){box.checked=!box.checked;box.dispatchEvent(new Event('change',{bubbles:true}))}});
+document.getElementById('check-all').onchange=e=>{checks.forEach(x=>x.checked=e.target.checked);
+calc()};
+document.querySelectorAll('tbody tr').forEach(r=>r.onclick=e=>{if(!e.target.closest('input,button,a'))location.href=r.dataset.url});
+window.selected=()=>{if(checks.some(x=>x.checked))return true;
+alert('データを選択してください。');
+return false};
+calc()})();
+
+window.addEventListener('pageshow',()=>{const all=document.getElementById('check-all');
+all.checked=false;
+document.querySelectorAll('.row-check').forEach(check=>check.checked=false);
+all.dispatchEvent(new Event('change'))});
+
+</script>
+</body>
+</html>
+
+
+
