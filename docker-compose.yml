@@ -34,6 +34,8 @@ services:
     volumes:
       # DBに保存したフォント情報と実ファイルが分離しないよう、プロジェクト内へ永続化する。
       - ./home_application/data/fonts:/app/data/fonts
+      # 所属グループのホーム画像をコンテナ再作成後も保持する。
+      - ./home_application/data/group-home-images:/app/data/group-home-images
     networks:
       - home_network
     environment:

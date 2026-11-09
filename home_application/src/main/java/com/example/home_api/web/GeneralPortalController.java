@@ -172,6 +172,17 @@ public class GeneralPortalController {
         String group = leaderGroup(session);
         model.addAttribute("group", jdbc.queryForMap("SELECT * FROM \"group\" WHERE group_id=?", group));
         model.addAttribute("displayYear", jdbc.query("SELECT value FROM group_setting WHERE group_id=? AND key='display_year'", rs -> rs.next() ? rs.getInt(1) : java.time.LocalDate.now().getYear(), group));
+        model.addAttribute("homeImage", groupSetting(group, "home_image_file"));
+        model.addAttribute("lineEnabled", Boolean.parseBoolean(groupSetting(group, "line_enabled")));
+        model.addAttribute("lineUrl", groupSetting(group, "line_url"));
+        model.addAttribute("lineToken", groupSetting(group, "line_token"));
+        model.addAttribute("lineDestinationId", groupSetting(group, "line_destination_id"));
+        Object success = session.getAttribute("groupLineTestSuccess");
+        Object error = session.getAttribute("groupLineTestError");
+        if (success != null) model.addAttribute("lineTestSuccess", success);
+        if (error != null) model.addAttribute("lineTestError", error);
+        session.removeAttribute("groupLineTestSuccess");
+        session.removeAttribute("groupLineTestError");
         return "group/settings";
     }
 
@@ -241,5 +252,9 @@ public class GeneralPortalController {
         if (group == null || !Boolean.TRUE.equals(session.getAttribute("activeGroupLeader")))
             throw new IllegalStateException("リーダー権限が必要です");
         return group.toString();
+    }
+
+    private String groupSetting(String group, String key) {
+        return jdbc.query("SELECT value FROM group_setting WHERE group_id=? AND key=?", rs -> rs.next() ? rs.getString(1) : "", group, key);
     }
 }
