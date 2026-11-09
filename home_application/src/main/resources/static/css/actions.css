@@ -228,8 +228,8 @@ a.button:focus,
   display: none !important;
   position: absolute !important;
   top: 8px;
-  right: auto !important;
-  left: auto;
+  right: 14px !important;
+  left: auto !important;
   margin: 0 !important;
   z-index: 1400 !important;
   height: 46px;
@@ -242,6 +242,26 @@ a.button:focus,
 body.header-menu-open .viewport-nav-toggle span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 body.header-menu-open .viewport-nav-toggle span:nth-child(2) { opacity: 0; }
 body.header-menu-open .viewport-nav-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+.kanban-header-viewport {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1500;
+  width: 100%;
+  max-width: 100%;
+}
+.kanban-header-viewport > .site-header {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+body.kanban-header-viewport-active > main { padding-top: 94px !important; }
 .site-header.horizontal-menu > nav {
   display: flex !important;
   max-height: 0;
@@ -1014,12 +1034,12 @@ select:hover {
 }
 
 @media (max-width: 900px) {
-  .site-header:not(.menu-open) {
+  .site-header {
     min-height: 64px;
-    max-height: 64px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
-    overflow: hidden;
+    row-gap: 0;
+    overflow: visible;
   }
   .site-header:not(.menu-open) > .brand,
   .site-header:not(.menu-open) > .nav-toggle {
