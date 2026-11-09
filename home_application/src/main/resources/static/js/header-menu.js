@@ -41,8 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const positionViewportToggle = () => {
       if (!forcedHorizontal() || toggle.parentNode !== document.body) return;
       const viewport = window.visualViewport;
-      const pageLeft = viewport?.pageLeft ?? window.scrollX;
-      const pageTop = viewport?.pageTop ?? window.scrollY;
+      const pageLeft = window.scrollX + (viewport?.offsetLeft || 0);
+      const pageTop = window.scrollY + (viewport?.offsetTop || 0);
       const width = viewport?.width ?? document.documentElement.clientWidth;
       toggle.style.left = `${Math.max(0, pageLeft + width - toggle.offsetWidth - 14)}px`;
       toggle.style.top = `${Math.max(0, pageTop + 8)}px`;
