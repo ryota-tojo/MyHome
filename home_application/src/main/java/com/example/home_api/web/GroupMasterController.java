@@ -32,7 +32,7 @@ public class GroupMasterController {
         String group=groupForType(session,type); MasterDef d=def(type);
         if("kanban-lanes".equals(type))ensureDefaultLanes(group);
         model.addAttribute("type",type); model.addAttribute("title",d.title()); model.addAttribute("requiredMaster",d.required());
-        String colorColumn="kanban-lanes".equals(type)?",lane_color AS color":"";
+        String colorColumn="kanban-lanes".equals(type)?",lane_color AS color":",NULL::varchar AS color";
         model.addAttribute("items",jdbc.queryForList("SELECT id,"+d.nameCol()+" AS name,"+d.orderCol()+" AS sort_no,disabled_flag"+colorColumn+" FROM "+d.table()+" WHERE group_id=? ORDER BY "+d.orderCol()+",create_date",group));
         return "group/master-list";
     }
