@@ -53,6 +53,16 @@ class WebRegressionContractTest {
         assertTrue(controller.contains("isSupportedFont"));
     }
 
+    @Test void kanbanOrderingIsSerializedAndDoesNotSaveEveryLaneConcurrently() throws IOException {
+        String controller=Files.readString(MAIN.resolve("java/com/example/home_api/web/KanbanController.java"));
+        String template=Files.readString(MAIN.resolve("resources/templates/group/kanban.html"));
+        assertTrue(controller.contains("FOR UPDATE"));
+        assertTrue(controller.contains("lockGroup(group)"));
+        assertFalse(template.contains("lists.forEach(save)"));
+        assertTrue(template.contains("saveQueue"));
+        assertTrue(template.contains("saveChangedLists(dragSourceList,destination)"));
+    }
+
     @Test void everyGroupMasterRowProvidesColorForSharedTemplate() throws IOException {
         String controller=Files.readString(MAIN.resolve("java/com/example/home_api/web/GroupMasterController.java"));
         assertTrue(controller.contains("NULL::varchar AS color"));
