@@ -33,6 +33,7 @@ public class KanbanController {
     String create(@RequestParam String title,@RequestParam(required=false,defaultValue="") String content,@RequestParam String status,@RequestParam(defaultValue="YELLOW") String color,HttpSession session,Authentication auth){
         String group=activeGroup(session);title=title.strip();content=content.strip();
         if(!valid(group,title,content,status,color))return "redirect:/group/kanban?error=input";
+        lockGroup(group);
         Integer no=jdbc.queryForObject("SELECT COALESCE(MAX(display_no),0)+1 FROM kanban_card WHERE group_id=? AND status=?",Integer.class,group,status);
         jdbc.update("INSERT INTO kanban_card(id,group_id,title,content,status,display_no,color,created_by) VALUES (?,?,?,?,?,?,?,?)","kbn-"+UUID.randomUUID().toString().substring(0,12),group,title,content,status,no,color,auth.getName());
         return "redirect:/group/kanban?created";
@@ -42,6 +43,7 @@ public class KanbanController {
     String update(@PathVariable String id,@RequestParam String title,@RequestParam(required=false,defaultValue="") String content,@RequestParam String status,@RequestParam String color,HttpSession session){
         String group=activeGroup(session);title=title.strip();content=content.strip();
         if(!valid(group,title,content,status,color))return "redirect:/group/kanban?error=input";
+        lockGroup(group);
         jdbc.update("UPDATE kanban_card SET title=?,content=?,status=?,color=?,update_date=CURRENT_TIMESTAMP WHERE id=? AND group_id=?",title,content,status,color,id,group);
         normalize(group);
         return "redirect:/group/kanban?updated";
@@ -49,19 +51,21 @@ public class KanbanController {
 
     @PostMapping("/{id}/delete") @Transactional
     String delete(@PathVariable String id,HttpSession session){
-        String group=activeGroup(session);jdbc.update("DELETE FROM kanban_card WHERE id=? AND group_id=?",id,group);normalize(group);
+        String group=activeGroup(session);lockGroup(group);jdbc.update("DELETE FROM kanban_card WHERE id=? AND group_id=?",id,group);normalize(group);
         return "redirect:/group/kanban?deleted";
     }
 
     @PostMapping("/order") @ResponseBody @Transactional
     Map<String,Object> order(@RequestParam String status,@RequestParam(required=false) List<String> ids,HttpSession session){
         String group=activeGroup(session);if(!laneExists(group,status,false))throw new IllegalArgumentException("不正なレーンです");
+        lockGroup(group);
         int no=1;for(String id:ids==null?List.<String>of():ids)jdbc.update("UPDATE kanban_card SET status=?,display_no=?,update_date=CURRENT_TIMESTAMP WHERE id=? AND group_id=?",status,no++,id,group);
-        normalize(group);return Map.of("ok",true);
+        return Map.of("ok",true);
     }
 
     private boolean valid(String group,String title,String content,String status,String color){return !title.isEmpty()&&title.length()<=100&&content.length()<=2000&&laneExists(group,status,false)&&COLORS.contains(color);}
     private boolean laneExists(String group,String lane,boolean includeDisabled){Integer count=jdbc.queryForObject("SELECT count(*) FROM kanban_lane WHERE group_id=? AND id=?"+(includeDisabled?"":" AND disabled_flag=0"),Integer.class,group,lane);return count!=null&&count>0;}
+    private void lockGroup(String group){jdbc.queryForObject("SELECT group_id FROM \"group\" WHERE group_id=? FOR UPDATE",String.class,group);}
     private void normalize(String group){for(Map<String,Object> lane:jdbc.queryForList("SELECT id FROM kanban_lane WHERE group_id=?",group)){String status=String.valueOf(lane.get("id"));int[] no={1};jdbc.queryForList("SELECT id FROM kanban_card WHERE group_id=? AND status=? ORDER BY display_no,update_date",group,status).forEach(r->jdbc.update("UPDATE kanban_card SET display_no=? WHERE id=?",no[0]++,r.get("id")));}}
     private void ensureDefaultLanes(String group){Integer count=jdbc.queryForObject("SELECT count(*) FROM kanban_lane WHERE group_id=?",Integer.class,group);if(count!=null&&count>0)return;int no=1;for(String name:List.of("未着手","進行中","完了"))jdbc.update("INSERT INTO kanban_lane(id,group_id,lane_no,lane_name) VALUES (?,?,?,?)","lane-"+UUID.randomUUID().toString().substring(0,12),group,no++,name);}
     private String activeGroup(HttpSession session){Object group=session.getAttribute("activeGroupId");if(group==null)throw new IllegalStateException("所属グループを選択してください");return group.toString();}
