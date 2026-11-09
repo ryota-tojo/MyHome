@@ -33,4 +33,28 @@ class WebRegressionContractTest {
         String patterns=Files.readString(MAIN.resolve("java/com/example/home_api/web/PurchasePatternController.java"));
         assertTrue(masters.contains("addFlashAttribute(\"formName\""));assertTrue(patterns.contains("addFlashAttribute(\"patternForm\""));
     }
+
+    @Test void adminBackupIncludesAndRestoresGroupHomeImages() throws IOException {
+        String controller=Files.readString(MAIN.resolve("java/com/example/home_api/web/AdminDataController.java"));
+        assertTrue(controller.contains("home-application-backup-v3"));
+        assertTrue(controller.contains("groupHomeImages"));
+        assertTrue(controller.contains("validateGroupHomeImageReferences"));
+        assertTrue(controller.contains("replaceGroupHomeImages"));
+        assertTrue(controller.contains("safeGroupHomeImagePath"));
+        assertTrue(controller.contains("isSupportedImage"));
+    }
+
+    @Test void adminBackupIncludesKanbanAndUploadedFonts() throws IOException {
+        String controller=Files.readString(MAIN.resolve("java/com/example/home_api/web/AdminDataController.java"));
+        assertTrue(controller.contains("\"kanban_lane\",\"kanban_card\""));
+        assertTrue(controller.contains("files.put(\"fonts\",fonts)"));
+        assertTrue(controller.contains("validateFontReferences"));
+        assertTrue(controller.contains("replaceFiles(FONT_DIR,fonts"));
+        assertTrue(controller.contains("isSupportedFont"));
+    }
+
+    @Test void everyGroupMasterRowProvidesColorForSharedTemplate() throws IOException {
+        String controller=Files.readString(MAIN.resolve("java/com/example/home_api/web/GroupMasterController.java"));
+        assertTrue(controller.contains("NULL::varchar AS color"));
+    }
 }
