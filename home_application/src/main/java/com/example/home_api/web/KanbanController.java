@@ -21,7 +21,7 @@ public class KanbanController {
     String board(HttpSession session,Model model){
         String group=activeGroup(session);
         ensureDefaultLanes(group);
-        var lanes=jdbc.queryForList("SELECT id,lane_name AS name,lane_no FROM kanban_lane WHERE group_id=? AND disabled_flag=0 ORDER BY lane_no,create_date",group);
+        var lanes=jdbc.queryForList("SELECT id,lane_name AS name,lane_no,lane_color AS color FROM kanban_lane WHERE group_id=? AND disabled_flag=0 ORDER BY lane_no,create_date",group);
         var cards=jdbc.queryForList("SELECT c.* FROM kanban_card c JOIN kanban_lane l ON l.id=c.status AND l.group_id=c.group_id WHERE c.group_id=? ORDER BY l.lane_no,c.display_no,c.create_date",group);
         model.addAttribute("lanes",lanes);
         model.addAttribute("cards",cards);
