@@ -1,4 +1,83 @@
-<!doctype html><html lang="ja" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>所属グループ設定</title><link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}"><link rel="stylesheet" th:href="@{/css/polish.css}"><link rel="stylesheet" th:href="@{/css/actions.css}"></head><body><header th:replace="~{fragments :: header}"></header><main><div class="title-area"><h1>所属グループ設定</h1></div><div class="success" th:if="${param.updated}">基本情報を更新しました。</div><div class="success" th:if="${param.saved}">設定を保存しました。</div><div class="alert" th:if="${param.error}" th:text="${param.error[0]=='duplicateId'?'所属グループIDはすでに使用されています。':'入力内容を確認してください。'}"></div>
-<section class="panel group-detail-panel"><h2>基本情報</h2><form class="user-detail-form" th:action="@{/group/settings/basic}" method="post" onsubmit="return confirm('所属グループの基本情報を更新しますか？')"><label>所属グループID <span class="required">必須</span><input name="groupId" th:value="${group.group_id}" required pattern="[A-Za-z0-9_-]{4,64}" maxlength="64"></label><label>所属グループ表示名 <span class="required">必須</span><input name="groupName" th:value="${group.group_name}" required maxlength="100"></label><div class="form-actions"><button>更新</button></div></form></section>
-<section class="panel group-detail-panel"><h2>家計簿設定</h2><form class="user-detail-form" method="post" th:action="@{/group/settings}"><label>表示年 <span class="required">必須</span><input type="number" name="displayYear" min="2000" max="2200" th:value="${displayYear}" required></label><div class="form-actions"><button>保存</button></div></form></section>
-<section class="panel group-detail-panel"><h2>所属グループ情報</h2><dl class="detail-list"><dt>作成日時</dt><dd th:text="${group.create_date?:'-'}"></dd><dt>更新日時</dt><dd th:text="${group.update_date?:'-'}"></dd></dl></section></main><footer th:replace="~{fragments :: footer}"></footer></body></html>
+<!doctype html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>所属グループ設定</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}"><link rel="stylesheet" th:href="@{/css/polish.css}"><link rel="stylesheet" th:href="@{/css/actions.css}">
+  <style>
+    .group-settings-wrap{width:min(1200px,80vw);margin:auto}.settings-card{margin-bottom:22px}.settings-card form{display:grid;gap:18px}.settings-card__actions{display:flex;justify-content:flex-end;gap:10px}.home-image-preview{width:100%;max-height:360px;object-fit:contain;border:1px solid #d7e1ec;border-radius:14px;background:#f5f8fa;padding:10px}.setting-fields{display:grid;gap:18px}.line-note{margin:0;color:#65717c;font-size:.85rem}.test-result-message{margin:0;padding:14px 16px;border-radius:9px;line-height:1.7}.success-message{background:#d1e7dd;color:#0f5132}.error-message{background:#f8d7da;color:#842029}@media(max-width:750px){.group-settings-wrap{width:94vw}.settings-card__actions{flex-wrap:wrap}.settings-card__actions button{flex:1;min-width:140px}}
+  </style>
+</head>
+<body><header th:replace="~{fragments :: header}"></header><main>
+  <div class="title-area"><h1>所属グループ設定</h1></div>
+  <div class="success" th:if="${param.updated}">基本情報を更新しました。</div>
+  <div class="success" th:if="${param.saved}">家計簿設定を保存しました。</div>
+  <div class="success" th:if="${param.imageSaved}">ホーム画像を保存しました。</div>
+  <div class="success" th:if="${param.imageDeleted}">ホーム画像を削除しました。</div>
+  <div class="success" th:if="${param.lineSaved}">LINE設定を保存しました。</div>
+  <div class="alert" th:if="${param.lineError}">LINE設定を保存できませんでした。DBマイグレーションの適用状態を確認してください。</div>
+  <div class="alert" th:if="${param.imageError}" th:text="${param.imageError[0]=='invalid'?'JPEG・PNG・WebP・GIF形式で、10MB以下の画像を選択してください。':param.imageError[0]=='delete'?'画像を削除できませんでした。':'画像を保存できませんでした。'}"></div>
+  <div class="alert" th:if="${param.error}" th:text="${param.error[0]=='duplicateId'?'所属グループIDはすでに使用されています。':'入力内容を確認してください。'}"></div>
+
+  <dialog id="line-result-dialog" class="confirm-dialog" th:if="${lineTestSuccess!=null or lineTestError!=null}">
+    <div class="confirm-dialog__body">
+      <h2 th:text="${lineTestSuccess!=null?'テスト通知成功':'テスト通知失敗'}">テスト通知結果</h2>
+      <p class="test-result-message success-message" th:if="${lineTestSuccess!=null}" th:text="${lineTestSuccess}"></p>
+      <p class="test-result-message error-message" th:if="${lineTestError!=null}" th:text="${lineTestError}"></p>
+    </div>
+    <div class="confirm-dialog__actions"><button type="button" class="secondary" onclick="this.closest('dialog').close()">閉じる</button></div>
+  </dialog>
+
+  <div class="group-settings-wrap">
+    <section class="panel settings-card"><h2>基本情報</h2>
+      <form class="user-detail-form" th:action="@{/group/settings/basic}" method="post" onsubmit="return confirm('所属グループの基本情報を更新しますか？')">
+        <label>所属グループID <span class="required">必須</span><input name="groupId" th:value="${group.group_id}" required pattern="[A-Za-z0-9_-]{4,64}" maxlength="64"></label>
+        <label>所属グループ表示名 <span class="required">必須</span><input name="groupName" th:value="${group.group_name}" required maxlength="100"></label>
+        <div class="settings-card__actions"><button>更新</button></div>
+      </form>
+    </section>
+
+    <section class="panel settings-card"><h2>ホーム画像</h2>
+      <img class="home-image-preview" th:if="${homeImage!=null and !homeImage.isBlank()}" th:src="@{/group/home-image}" alt="現在のホーム画像">
+      <form th:action="@{/group/settings/home-image}" method="post" enctype="multipart/form-data">
+        <label>画像ファイル <span class="required">必須</span><input type="file" name="homeImage" accept="image/jpeg,image/png,image/webp,image/gif" required></label>
+        <p class="line-note">JPEG・PNG・WebP・GIF形式、最大10MB。ダッシュボード上部に表示されます。</p>
+        <div class="settings-card__actions"><button>アップロード</button></div>
+      </form>
+      <form th:if="${homeImage!=null and !homeImage.isBlank()}" th:action="@{/group/settings/home-image/delete}" method="post" onsubmit="return confirm('ホーム画像を削除しますか？')">
+        <div class="settings-card__actions"><button type="submit" class="danger">画像を削除</button></div>
+      </form>
+    </section>
+
+    <section class="panel settings-card"><h2>家計簿設定</h2>
+      <form class="user-detail-form" method="post" th:action="@{/group/settings}">
+        <label>表示年 <span class="required">必須</span><input type="number" name="displayYear" min="2000" max="2200" th:value="${displayYear}" required></label>
+        <div class="settings-card__actions"><button>保存</button></div>
+      </form>
+    </section>
+
+    <section class="panel settings-card"><h2>LINE通知設定</h2>
+      <form id="line-settings-form" method="post" th:action="@{/group/settings/line}">
+        <div class="setting-fields">
+          <label>LINE 通知送信フラグ<select name="lineEnabled"><option value="true" th:selected="${lineEnabled}">有効</option><option value="false" th:selected="${!lineEnabled}">無効</option></select></label>
+          <label>LINE API URL<input type="url" name="lineUrl" th:value="${lineUrl}" maxlength="500"></label>
+          <label>LINE トークン<input type="text" name="lineToken" th:value="${lineToken}" autocomplete="off" maxlength="2000"></label>
+          <label>LINE 送信先ID<input type="text" name="lineDestinationId" th:value="${lineDestinationId}" maxlength="500"></label>
+        </div>
+        <p class="line-note">LINEトークンを空欄のまま保存した場合は、現在のトークンを保持します。</p>
+        <input type="hidden" name="saveBeforeTest" value="false">
+        <div class="settings-card__actions"><button type="button" class="secondary" id="line-test" th:formaction="@{/group/settings/line/test}">テスト通知</button><button type="submit" id="line-save">保存</button></div>
+      </form>
+    </section>
+  </div>
+</main><footer th:replace="~{fragments :: footer}"></footer>
+<script>
+const lineForm=document.getElementById('line-settings-form');
+if(lineForm){
+  const snapshot=()=>[...new FormData(lineForm).entries()].filter(([key])=>key!=='_csrf'&&key!=='saveBeforeTest').map(([key,value])=>key+'='+value).join('&');
+  const initial=snapshot();
+  document.getElementById('line-save').addEventListener('click',event=>{if(!confirm('LINE設定を保存しますか？'))event.preventDefault()});
+  document.getElementById('line-test').addEventListener('click',event=>{const changed=snapshot()!==initial;if(changed&&!confirm('入力値が変更されています。変更内容を保存してからテスト通知を送信してもよいですか？')){event.preventDefault();return}lineForm.querySelector('[name="saveBeforeTest"]').value=String(changed);lineForm.action=event.currentTarget.getAttribute('formaction');lineForm.requestSubmit()});
+}
+const lineResult=document.getElementById('line-result-dialog');if(lineResult)lineResult.showModal();
+</script>
+</body></html>

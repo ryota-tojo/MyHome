@@ -5,6 +5,7 @@
   <title th:text="${title}"></title>
   <link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}">
   <link rel="stylesheet" th:href="@{/css/polish.css}"><link rel="stylesheet" th:href="@{/css/actions.css}"><link rel="stylesheet" th:href="@{/css/management-components.css}">
+  <style>.lane-color-swatch{display:inline-block;width:26px;height:26px;flex:0 0 26px;border:1px solid #cbd3da;border-radius:7px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}.confirm-dialog .lane-color-field{display:grid!important;grid-template-columns:70px 106px!important;align-items:center!important;justify-content:start;gap:12px}.lane-color-field>span{display:flex;align-items:center;height:46px;line-height:1;margin:0}.confirm-dialog .lane-color-field input[type=color]{display:block!important;width:106px!important;height:58px!important;margin:0!important;padding:9px!important;cursor:pointer}@media(max-width:700px){.sortable-item.lane-item>.drag-handle{align-self:center;padding:0;height:36px}.sortable-item.lane-item>.lane-color-swatch{align-self:center}.sortable-item.lane-item>.name{align-self:center;padding-top:0;padding-bottom:0}}</style>
 </head>
 <body>
 <header th:replace="~{fragments :: header}"></header>
@@ -17,12 +18,13 @@
   <section class="panel management-panel">
     <div class="master-toolbar"><p class="master-note">左のハンドルをドラッグして表示順を変更できます。</p><button type="button" class="add-button" id="create-open" aria-label="新規登録">＋</button></div>
     <ul id="sortable" class="sortable-list" data-touch-sortable th:attr="data-order-url=@{/group/masters/{type}/order(type=${type})}">
-      <li class="sortable-item" th:each="item:${items}" th:classappend="${item.disabled_flag==1}?' disabled':''" th:attr="data-id=${item.id}" draggable="true">
+      <li class="sortable-item" th:each="item:${items}" th:classappend="${(item.disabled_flag==1?' disabled':'') + (type=='kanban-lanes'?' lane-item':'')}" th:attr="data-id=${item.id}" draggable="true">
         <span class="drag-handle" aria-label="並び替え">☰</span>
+        <span class="lane-color-swatch" th:if="${type=='kanban-lanes'}" th:style="|background:${item.color}|" th:title="${item.color}"></span>
         <span class="name" th:text="${item.name}"></span>
         <div class="master-actions">
           <span class="status-label" th:classappend="${item.disabled_flag==1}?' inactive':' active'" th:text="${item.disabled_flag==1?'無効':'有効'}"></span>
-          <button type="button" class="secondary edit-button" th:attr="data-id=${item.id},data-name=${item.name}" onclick="openEdit(this)">編集</button>
+          <button type="button" class="secondary edit-button" th:attr="data-id=${item.id},data-name=${item.name},data-color=${item.color}" onclick="openEdit(this)">編集</button>
           <form th:action="@{|/group/masters/${type}/${item.id}/toggle|}" method="post">
             <button type="submit" class="secondary" th:text="${item.disabled_flag==1?'有効化':'無効化'}"></button>
           </form>
@@ -37,13 +39,13 @@
 
 <dialog id="create-dialog" class="confirm-dialog">
   <form id="master-form" method="post" th:action="@{|/group/masters/${type}|}">
-    <div class="confirm-dialog__body"><h2 th:text="${title+'を登録'}"></h2><label>表示名<input id="create-name" name="name" maxlength="100" required autocomplete="off"></label></div>
+    <div class="confirm-dialog__body"><h2 th:text="${title+'を登録'}"></h2><label>表示名<input id="create-name" name="name" maxlength="100" required autocomplete="off"></label><label class="lane-color-field" th:if="${type=='kanban-lanes'}"><span>レーン色</span><input id="create-color" type="color" name="color" value="#f8f6f1"></label></div>
     <div class="confirm-dialog__actions"><button type="button" class="secondary" id="create-cancel">キャンセル</button><button type="submit">登録</button></div>
   </form>
 </dialog>
 <dialog id="edit-dialog" class="confirm-dialog" th:attr="data-base=@{/group/masters/{type}(type=${type})}">
   <form id="edit-form" method="post" th:action="@{|/group/masters/${type}/placeholder/update|}">
-    <div class="confirm-dialog__body"><h2>表示名を編集</h2><label>表示名 <span class="required">必須</span><input id="edit-name" name="name" maxlength="100" required></label></div>
+    <div class="confirm-dialog__body"><h2>表示名を編集</h2><label>表示名 <span class="required">必須</span><input id="edit-name" name="name" maxlength="100" required></label><label class="lane-color-field" th:if="${type=='kanban-lanes'}"><span>レーン色</span><input id="edit-color" type="color" name="color" value="#f8f6f1"></label></div>
     <div class="confirm-dialog__actions"><button type="button" class="secondary" id="edit-cancel">キャンセル</button><button type="submit">更新</button></div>
   </form>
 </dialog>
@@ -54,13 +56,13 @@
   list?.addEventListener('dragover',e=>{e.preventDefault();const target=e.target.closest('.sortable-item');if(!dragged||!target||target===dragged)return;const r=target.getBoundingClientRect();list.insertBefore(dragged,e.clientY<r.top+r.height/2?target:target.nextSibling)});
   function saveOrder(){const body=new URLSearchParams();[...list.children].forEach(x=>body.append('ids',x.dataset.id));const csrf=document.querySelector('#master-form input[name="_csrf"]');if(csrf)body.append(csrf.name,csrf.value);fetch(/*[[@{/group/masters/{type}/order(type=${type})}]]*/'',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body}).then(r=>{if(!r.ok)location.reload()})}
   const dialog=document.getElementById('edit-dialog'),editForm=document.getElementById('edit-form'),editName=document.getElementById('edit-name');
-  const createDialog=document.getElementById('create-dialog'),createName=document.getElementById('create-name');
-  document.getElementById('create-open').addEventListener('click',()=>{createDialog.showModal();requestAnimationFrame(()=>createName.focus())});
+  const createDialog=document.getElementById('create-dialog'),createName=document.getElementById('create-name'),createColor=document.getElementById('create-color'),editColor=document.getElementById('edit-color');
+  document.getElementById('create-open').addEventListener('click',()=>{createName.value='';if(createColor)createColor.value='#f8f6f1';createDialog.showModal();requestAnimationFrame(()=>createName.focus())});
   document.getElementById('create-cancel').addEventListener('click',()=>createDialog.close());
-  function openEdit(button){editName.value=button.dataset.name;editForm.action=dialog.dataset.base+'/'+encodeURIComponent(button.dataset.id)+'/update';dialog.showModal();requestAnimationFrame(()=>{editName.focus();editName.select()})}
+  function openEdit(button){editName.value=button.dataset.name;if(editColor)editColor.value=button.dataset.color||'#f8f6f1';editForm.action=dialog.dataset.base+'/'+encodeURIComponent(button.dataset.id)+'/update';dialog.showModal();requestAnimationFrame(()=>{editName.focus();editName.select()})}
   document.getElementById('edit-cancel').addEventListener('click',()=>dialog.close());
-  const retainedMode=/*[[${formMode}]]*/ null,retainedName=/*[[${formName}]]*/ null,retainedId=/*[[${formId}]]*/ null;
-  if(retainedMode==='create'){createName.value=retainedName||'';createDialog.showModal();requestAnimationFrame(()=>createName.focus())}
-  if(retainedMode==='edit'){editName.value=retainedName||'';editForm.action=dialog.dataset.base+'/'+encodeURIComponent(retainedId)+'/update';dialog.showModal();requestAnimationFrame(()=>editName.focus())}
+  const retainedMode=/*[[${formMode}]]*/ null,retainedName=/*[[${formName}]]*/ null,retainedId=/*[[${formId}]]*/ null,retainedColor=/*[[${formColor}]]*/ null;
+  if(retainedMode==='create'){createName.value=retainedName||'';if(createColor)createColor.value=retainedColor||'#f8f6f1';createDialog.showModal();requestAnimationFrame(()=>createName.focus())}
+  if(retainedMode==='edit'){editName.value=retainedName||'';if(editColor)editColor.value=retainedColor||'#f8f6f1';editForm.action=dialog.dataset.base+'/'+encodeURIComponent(retainedId)+'/update';dialog.showModal();requestAnimationFrame(()=>editName.focus())}
 </script>
 </body></html>

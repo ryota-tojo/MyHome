@@ -205,6 +205,122 @@ a.button:focus,
 .site-header.menu-open .nav-toggle span:nth-child(2) { opacity: 0; }
 .site-header.menu-open .nav-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
+/* 横スクロール時は、画面幅に関係なくメニュー操作を右上へ追従させる。 */
+.site-header.horizontal-menu {
+  padding-right: 76px !important;
+}
+.site-header.horizontal-menu .nav-toggle {
+  display: flex;
+  position: fixed;
+  top: 9px;
+  right: 14px;
+  z-index: 1200;
+  height: 46px;
+  min-height: 46px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The kanban board widens the document itself. Keep its menu control on the
+   visual viewport rather than at the far-right edge of that wide document. */
+.nav-toggle.viewport-nav-toggle {
+  display: none !important;
+  position: absolute !important;
+  top: 8px;
+  right: auto !important;
+  left: auto;
+  margin: 0 !important;
+  z-index: 1400 !important;
+  height: 46px;
+  min-height: 46px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.nav-toggle.viewport-nav-toggle.is-active { display: flex !important; }
+body.header-menu-open .viewport-nav-toggle span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+body.header-menu-open .viewport-nav-toggle span:nth-child(2) { opacity: 0; }
+body.header-menu-open .viewport-nav-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+.site-header.horizontal-menu > nav {
+  display: flex !important;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden !important;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-14px);
+  pointer-events: none;
+  transition: max-height .42s cubic-bezier(.22,1,.36,1), padding .28s ease,
+    opacity .24s ease, transform .32s cubic-bezier(.22,1,.36,1),
+    visibility 0s linear .42s;
+}
+.site-header.horizontal-menu > .active-group,
+.site-header.horizontal-menu > form {
+  display: block !important;
+  max-height: 0;
+  margin-top: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: max-height .3s ease, margin .3s ease, opacity .22s ease,
+    transform .3s ease, visibility 0s linear .3s;
+}
+.site-header.horizontal-menu.menu-open {
+  flex-wrap: wrap;
+  max-height: 100dvh;
+  overflow-y: auto;
+}
+.site-header.horizontal-menu.menu-open > nav {
+  order: 10;
+  display: flex;
+  width: 100%;
+  flex: 0 0 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 10px 0 4px;
+  max-height: 900px;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.site-header.horizontal-menu.menu-open > .active-group,
+.site-header.horizontal-menu.menu-open > form {
+  display: block;
+  width: 100%;
+  max-height: 64px;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition-delay: .08s;
+}
+.site-header.horizontal-menu.menu-open nav > a,
+.site-header.horizontal-menu.menu-open .menu-trigger {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  justify-content: flex-start;
+}
+.site-header.horizontal-menu.menu-open .menu-dropdown {
+  display: block;
+  width: 100%;
+}
+.site-header.horizontal-menu.menu-open .menu-panel {
+  position: static;
+  width: 100%;
+  min-width: 0;
+  margin-top: 0;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
 .search-modal-open {
   display: block;
   margin: 0 0 20px auto;
@@ -389,25 +505,30 @@ body:has(.registration-form) .title-row > :last-child:not(:first-child) {
     padding: 6px 14px;
     max-height: 100dvh;
     overflow-y: auto;
+    transition: max-height .42s cubic-bezier(.22, 1, .36, 1);
   }
   .site-header + main { padding-top: 94px; }
   .site-header .brand { flex: 1; }
   .nav-toggle {
     display: flex;
+    position: fixed;
+    top: 8px;
+    right: 14px;
+    z-index: 1200;
     height: 42px;
     min-height: 42px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
   }
+  .site-header { padding-right: 74px; }
   .nav-toggle span { margin: 2px 0; }
   .site-header.menu-open .nav-toggle span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
   .site-header.menu-open .nav-toggle span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
-  .site-header > nav,
+  /* Keep collapsed menu elements mounted so their open/close transitions run. */
+  .site-header > nav { display: flex; }
   .site-header > .active-group,
-  .site-header > form {
-    display: none;
-  }
+  .site-header > form { display: block; }
   .site-header > .active-group { order: 11; }
   .site-header > form { order: 12; }
   .site-header.menu-open > nav {
@@ -893,6 +1014,19 @@ select:hover {
 }
 
 @media (max-width: 900px) {
+  .site-header:not(.menu-open) {
+    min-height: 64px;
+    max-height: 64px;
+    flex-wrap: nowrap;
+    align-items: center;
+    overflow: hidden;
+  }
+  .site-header:not(.menu-open) > .brand,
+  .site-header:not(.menu-open) > .nav-toggle {
+    align-self: center;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
   .site-header.menu-open .menu-dropdown {
     display: block;
     width: 100%;
@@ -919,6 +1053,16 @@ select:hover {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Horizontal layouts keep the menu in the document while collapsed so the
+   opening and closing transitions also work below the mobile breakpoint. */
+.site-header.horizontal-menu:not(.menu-open) > nav {
+  display: flex !important;
+}
+.site-header.horizontal-menu:not(.menu-open) > .active-group,
+.site-header.horizontal-menu:not(.menu-open) > form {
+  display: block !important;
 }
 
 /* Center page content headings while preserving table dimensions and cell alignment. */
