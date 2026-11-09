@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!toggle) return;
 
     const dropdowns=[...header.querySelectorAll('.menu-dropdown')];
+    let submenuCloseTimer;
     const closeSubmenus=(except=null)=>dropdowns.forEach(dropdown=>{
       if(dropdown===except)return;
       dropdown.classList.remove('submenu-open');
@@ -27,36 +28,58 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const close = () => {
+      clearTimeout(submenuCloseTimer);
       header.classList.remove('menu-open');
       document.body.classList.remove('header-menu-open');
       toggle.setAttribute('aria-expanded', 'false');
-      closeSubmenus();
+      // Keep an expanded submenu in the layout until the parent menu has
+      // finished shrinking. Removing it immediately makes the header jump.
+      submenuCloseTimer=setTimeout(closeSubmenus,430);
     };
 
     const kanbanPage = document.body.classList.contains('kanban-page');
     const viewportWidth = () => window.visualViewport?.width || document.documentElement.clientWidth;
-    const forcedHorizontal = () => kanbanPage && viewportWidth() <= 900;
+    const forcedHorizontal = () => false;
+    const headerPosition = document.createComment('site-header-position');
+    header.parentNode.insertBefore(headerPosition,header);
+    let headerViewport=null;
     const togglePosition = document.createComment('nav-toggle-position');
     header.insertBefore(togglePosition, toggle);
     const positionViewportToggle = () => {
-      if (!forcedHorizontal() || toggle.parentNode !== document.body) return;
-      const viewport = window.visualViewport;
-      const pageLeft = window.scrollX + (viewport?.offsetLeft || 0);
-      const pageTop = window.scrollY + (viewport?.offsetTop || 0);
-      const width = viewport?.width ?? document.documentElement.clientWidth;
-      toggle.style.left = `${Math.max(0, pageLeft + width - toggle.offsetWidth - 14)}px`;
-      toggle.style.top = `${Math.max(0, pageTop + 8)}px`;
+      if (!forcedHorizontal()) return;
+      header.style.removeProperty('position');
+      header.style.removeProperty('top');
+      header.style.removeProperty('right');
+      header.style.removeProperty('left');
+      header.style.removeProperty('width');
+      header.style.removeProperty('max-width');
+      header.style.removeProperty('transform');
     };
     const syncViewportToggle = () => {
       const active = forcedHorizontal();
       if (active) {
+        if(!headerViewport){headerViewport=document.createElement('div');headerViewport.className='kanban-header-viewport';document.body.appendChild(headerViewport)}
+        if(header.parentNode!==headerViewport)headerViewport.appendChild(header);
+        document.body.classList.add('kanban-header-viewport-active');
         toggle.classList.add('viewport-nav-toggle', 'is-active');
-        if (toggle.parentNode !== document.body) document.body.appendChild(toggle);
+        if (toggle.parentNode !== header) togglePosition.parentNode.insertBefore(toggle, togglePosition.nextSibling);
         positionViewportToggle();
       } else {
+        if(header.parentNode!==headerPosition.parentNode)headerPosition.parentNode.insertBefore(header,headerPosition.nextSibling);
+        headerViewport?.remove();headerViewport=null;
+        document.body.classList.remove('kanban-header-viewport-active');
+        header.style.removeProperty('position');
+        header.style.removeProperty('top');
+        header.style.removeProperty('right');
+        header.style.removeProperty('left');
+        header.style.removeProperty('width');
+        header.style.removeProperty('max-width');
+        header.style.removeProperty('transform');
         toggle.classList.remove('viewport-nav-toggle', 'is-active');
         toggle.style.removeProperty('left');
         toggle.style.removeProperty('top');
+        toggle.style.removeProperty('right');
+        toggle.style.removeProperty('transform');
         if (toggle.parentNode !== header) {
           togglePosition.parentNode.insertBefore(toggle, togglePosition.nextSibling);
         }
@@ -65,8 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (kanbanPage) {
       syncViewportToggle();
-      window.addEventListener('scroll', positionViewportToggle, {passive: true});
-      window.visualViewport?.addEventListener('scroll', positionViewportToggle, {passive: true});
       window.visualViewport?.addEventListener('resize', () => {
         syncViewportToggle();
         positionViewportToggle();
@@ -94,15 +115,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     toggle.addEventListener('click', () => {
-      const open = header.classList.toggle('menu-open');
-      document.body.classList.toggle('header-menu-open', open);
-      toggle.setAttribute('aria-expanded', String(open));
+      if(header.classList.contains('menu-open')){close();return;}
+      clearTimeout(submenuCloseTimer);
+      header.classList.add('menu-open');
+      document.body.classList.add('header-menu-open');
+      toggle.setAttribute('aria-expanded', 'true');
     });
 
     header.querySelectorAll('nav a').forEach(link => link.addEventListener('click', close));
     document.addEventListener('click', event => {
       if (!header.contains(event.target) && !toggle.contains(event.target)) close();
-      else if(!event.target.closest('.menu-dropdown'))closeSubmenus();
+      else if(!toggle.contains(event.target)&&!event.target.closest('.menu-dropdown'))closeSubmenus();
     });
     document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeSubmenus();}});
     window.addEventListener('resize', () => {
