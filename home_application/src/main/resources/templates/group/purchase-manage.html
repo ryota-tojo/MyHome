@@ -82,7 +82,7 @@
 <div class="success" th:if="${param.settled}">選択データを精算済みにしました。</div>
 <div class="success" th:if="${param.unsettled}">選択データの精算済みを解除しました。</div>
 <div class="success" th:if="${param.deleted}">削除可能な選択データを削除しました。</div>
-<div class="alert" th:if="${invalidReferenceCount>0}" th:text="|無効または削除済みのメンバー・カテゴリー・支払い方法・ラベルを使用している未確定データが${invalidReferenceCount}件あります。対象行を開いて入力し直してください。|"></div>
+<div class="alert" th:if="${invalidReferenceCount > 0}" th:text="${'無効または削除済みのメンバー・カテゴリー・支払い方法・ラベルを使用している未確定データが' + invalidReferenceCount + '件あります。対象行を開いて入力し直してください。'}"></div>
 <div class="list-toolbar">
 <button type="button" id="open-search">検索条件を設定</button>
 </div>
@@ -151,7 +151,7 @@
 <section class="summary-card" aria-label="検索結果の合計">
 <h2 class="summary-title">検索結果の集計</h2>
 <div class="summary-header">
-<div><span class="summary-label">合計金額（支出 − 収入）</span><span class="summary-count" th:text="|（${#numbers.formatInteger(summary.count,1,'COMMA')}件）|">（0件）</span></div>
+<div><span class="summary-label">合計金額（支出 − 収入）</span><span class="summary-count" th:text="${'（' + #numbers.formatInteger(summary.count, 1, 'COMMA') + '件）'}">（0件）</span></div>
 <strong class="summary-value" th:classappend="${summary.total < 0} ? ' negative'" th:text="|${#numbers.formatInteger(summary.total,1,'COMMA')}円|">0円</strong>
 </div>
 <div class="payment-summary-list" th:if="${!summary.payments.isEmpty()}">
@@ -216,7 +216,7 @@
 </td>
 <td th:text="${r.remarks}">
 </td>
-<td class="locked" th:text="${r.fixed_flag==1?'確定済':r.reference_warning==1?'要修正':'編集可'}">
+<td class="locked" th:text="${r.fixed_flag == 1 ? '確定済' : (r.reference_warning == 1 ? '要修正' : '編集可')}">
 </td>
 </tr>
 </tbody>
