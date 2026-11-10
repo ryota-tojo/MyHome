@@ -14,9 +14,10 @@
   <div class="success management-message" th:if="${param.created}">登録しました。</div>
   <div class="success management-message" th:if="${param.updated}">更新しました。</div>
   <div class="success management-message" th:if="${param.deleted}">削除しました。</div>
-  <div class="alert management-message" th:if="${param.error != null}" th:text="${param.error[0]=='last'?'最低1件の有効な項目が必要です。':param.error[0]=='duplicate'?'同じ表示名は登録できません。':param.error[0]=='inUse'?(type=='kanban-lanes'?'タスクが紐づいているレーンは無効化・削除できません。':'購入データなどから参照されているため削除できません。'):param.error[0]=='disableFirst'?'削除する前に無効化してください。':'入力内容を確認してください。'}"></div>
+  <div class="success management-message" th:if="${param.sorted}">表示順を更新しました。</div>
+<div class="alert management-message" th:if="${param.error != null}" th:text="${param.error[0] == 'last' ? '最低1件の有効な項目が必要です。' : (param.error[0] == 'duplicate' ? '同じ表示名は登録できません。' : (param.error[0] == 'inUse' ? (type == 'kanban-lanes' ? 'タスクが紐づいているレーンは無効化・削除できません。' : '購入データなどから参照されているため削除できません。') : (param.error[0] == 'disableFirst' ? '削除する前に無効化してください。' : '入力内容を確認してください。')))}"></div>
   <section class="panel management-panel">
-    <div class="master-toolbar"><p class="master-note">左のハンドルをドラッグして表示順を変更できます。</p><button type="button" class="add-button" id="create-open" aria-label="新規登録">＋</button></div>
+    <div class="master-toolbar"><p class="master-note">左のハンドルをドラッグして表示順を変更できます。</p><div class="master-toolbar__actions"><button type="button" class="secondary auto-sort-open">自動並び替え</button><button type="button" class="add-button" id="create-open" aria-label="新規登録">＋</button></div></div>
     <ul id="sortable" class="sortable-list" data-touch-sortable th:attr="data-order-url=@{/group/masters/{type}/order(type=${type})}">
       <li class="sortable-item" th:each="item:${items}" th:classappend="${(item.disabled_flag==1?' disabled':'') + (type=='kanban-lanes'?' lane-item':'')}" th:attr="data-id=${item.id}" draggable="true">
         <span class="drag-handle" aria-label="並び替え">☰</span>
@@ -49,6 +50,12 @@
     <div class="confirm-dialog__actions"><button type="button" class="secondary" id="edit-cancel">キャンセル</button><button type="submit">更新</button></div>
   </form>
 </dialog>
+<dialog id="auto-sort-dialog" class="confirm-dialog">
+  <form method="post" th:action="@{/group/masters/{type}/auto-order(type=${type})}">
+    <div class="confirm-dialog__body"><h2>自動並び替え</h2><label><span>並び替え基準</span><select name="sortBy" required><option value="name">表示名</option><option value="created">作成日時</option><option value="updated">更新日時</option><option value="status">状態（有効・無効）</option></select></label><fieldset><legend>順序</legend><label class="choice-row"><input type="radio" name="direction" value="asc" checked>昇順</label><label class="choice-row"><input type="radio" name="direction" value="desc">降順</label></fieldset></div>
+    <div class="confirm-dialog__actions"><button type="button" class="secondary auto-sort-cancel">キャンセル</button><button type="submit">適用</button></div>
+  </form>
+</dialog>
 <script th:inline="javascript">
   const list=document.getElementById('sortable');let dragged=null;
   list?.addEventListener('dragstart',e=>{dragged=e.target.closest('.sortable-item');dragged?.classList.add('dragging')});
@@ -61,6 +68,7 @@
   document.getElementById('create-cancel').addEventListener('click',()=>createDialog.close());
   function openEdit(button){editName.value=button.dataset.name;if(editColor)editColor.value=button.dataset.color||'#f8f6f1';editForm.action=dialog.dataset.base+'/'+encodeURIComponent(button.dataset.id)+'/update';dialog.showModal();requestAnimationFrame(()=>{editName.focus();editName.select()})}
   document.getElementById('edit-cancel').addEventListener('click',()=>dialog.close());
+  const autoSortDialog=document.getElementById('auto-sort-dialog');document.querySelector('.auto-sort-open').addEventListener('click',()=>autoSortDialog.showModal());document.querySelector('.auto-sort-cancel').addEventListener('click',()=>autoSortDialog.close());
   const retainedMode=/*[[${formMode}]]*/ null,retainedName=/*[[${formName}]]*/ null,retainedId=/*[[${formId}]]*/ null,retainedColor=/*[[${formColor}]]*/ null;
   if(retainedMode==='create'){createName.value=retainedName||'';if(createColor)createColor.value=retainedColor||'#f8f6f1';createDialog.showModal();requestAnimationFrame(()=>createName.focus())}
   if(retainedMode==='edit'){editName.value=retainedName||'';if(editColor)editColor.value=retainedColor||'#f8f6f1';editForm.action=dialog.dataset.base+'/'+encodeURIComponent(retainedId)+'/update';dialog.showModal();requestAnimationFrame(()=>editName.focus())}
