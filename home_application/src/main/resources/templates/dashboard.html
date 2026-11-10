@@ -8,17 +8,14 @@
     <link rel="stylesheet" th:href="@{/theme.css}">
     <link rel="stylesheet" th:href="@{/css/polish.css}">
     <link rel="stylesheet" th:href="@{/css/actions.css}">
-    <style>.dashboard-home-image{width:min(1500px,94vw);margin:0 auto 24px;padding:12px;border:1px solid #d7e1ec;border-radius:18px;background:#fff;box-shadow:0 8px 24px rgba(20,28,40,.08)}.dashboard-home-image img{display:block;width:100%;max-height:520px;object-fit:contain;border-radius:12px}@media(max-width:700px){.dashboard-home-image{padding:7px;border-radius:13px}.dashboard-home-image img{border-radius:9px}}</style>
+    <style>.dashboard-home-image{width:min(1500px,94vw);margin:0 auto 24px;padding:12px;border:1px solid #d7e1ec;border-radius:18px;background:#fff;box-shadow:0 8px 24px rgba(20,28,40,.08)}.dashboard-home-image img{display:block;width:100%;max-height:520px;object-fit:contain;border-radius:12px}.period{align-items:flex-end}.period select{min-width:120px}.period button{flex:0 0 auto;min-width:88px;white-space:nowrap;word-break:keep-all}@media(max-width:700px){.dashboard-home-image{padding:7px;border-radius:13px}.dashboard-home-image img{border-radius:9px}.period{width:100%;justify-content:flex-end;flex-wrap:wrap}.period select{flex:1 1 110px;min-width:0}.period button{min-width:88px}}</style>
 </head>
 <body>
 <header th:replace="~{fragments :: header}"></header>
 <main>
-    <div class="title-area"><h1>ホーム</h1></div>
     <section class="dashboard-home-image" th:if="${hasHomeImage}"><img th:src="@{/group/home-image}" th:alt="|${activeGroupName}のホーム画像|"></section>
     <div class="title-row"><h2 th:text="|${year}年 ${month}月|">今月</h2>
-        <form method="get" class="period"><input type="number" name="year" th:value="${year}" min="2000"
-                                                 max="2100"><input type="number" name="month" th:value="${month}"
-                                                                   min="1" max="12">
+        <form method="get" class="period"><select name="year"><option th:each="y:${yearOptions}" th:value="${y}" th:text="|${y}年|" th:selected="${y==year}"></option></select><select name="month"><option th:each="m:${monthOptions}" th:value="${m}" th:text="|${m}月|" th:selected="${m==month}"></option></select>
             <button>表示</button>
         </form>
     </div>
@@ -51,12 +48,12 @@
     </section>
     <section class="cards">
         <article><span>収入</span><strong class="income"
-                                          th:text="|¥${#numbers.formatInteger(summary.income,1,'COMMA')}|">0</strong>
+                th:text="${'¥' + #numbers.formatInteger(summary.income, 1, 'COMMA')}">0</strong>
         </article>
         <article><span>支出</span><strong class="expense"
-                                          th:text="|¥${#numbers.formatInteger(summary.expense,1,'COMMA')}|">0</strong>
+                th:text="${'¥' + #numbers.formatInteger(summary.expense, 1, 'COMMA')}">0</strong>
         </article>
-        <article><span>収支</span><strong th:text="|¥${#numbers.formatInteger(summary.balance,1,'COMMA')}|">0</strong>
+            <article><span>収支</span><strong th:text="${'¥' + #numbers.formatInteger(summary.balance, 1, 'COMMA')}">0</strong>
         </article>
     </section>
     <section class="grid">
@@ -64,7 +61,7 @@
             <div th:each="r:${categorySummary}" class="bar-row"><span th:text="${r.category_name}"></span>
                 <div class="bar"><i
                         th:style="|width:${summary.expense == 0 ? 0 : (r.amount * 100 / summary.expense)}%|"></i></div>
-                <b th:text="|¥${#numbers.formatInteger(r.amount,1,'COMMA')}|"></b></div>
+                            <b th:text="${'¥' + #numbers.formatInteger(r.amount, 1, 'COMMA')}"></b></div>
         </article>
         <article class="panel"><h2>最近の購入</h2>
             <table>
@@ -76,7 +73,7 @@
                 <tr th:each="r:${recent}">
                     <td th:text="${#dates.format(r.shopping_date,'MM/dd')}"></td>
                     <td th:text="${r.category_name}"></td>
-                    <td th:text="|¥${#numbers.formatInteger(r.amount,1,'COMMA')}|"></td>
+                            <td th:text="${'¥' + #numbers.formatInteger(r.amount, 1, 'COMMA')}"></td>
                 </tr>
             </table>
         </article>

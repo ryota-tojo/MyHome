@@ -2,7 +2,7 @@
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 <body>
 <header th:fragment="header" class="site-header theme-nav general-nav">
-  <span class="ui-config" hidden th:attr="data-select-threshold=${selectSearchThreshold}"></span>
+  <span class="ui-config" hidden th:attr="data-select-threshold=${selectSearchThreshold},data-flash-seconds=${flashMessageSeconds}"></span>
   <span class="latest-version-config" hidden th:attr="data-version=${latestVersion}"></span>
   <script th:src="@{/js/datetime-display.js}" defer></script>
   <script th:src="@{/js/header-menu.js}" defer></script>
@@ -15,6 +15,9 @@
   <script th:src="@{/js/modal-backdrop-close.js}" defer></script>
   <script th:src="@{/js/password-toggle.js}" defer></script>
   <script th:src="@{/js/role-row-highlight.js}" defer></script>
+  <script th:src="@{/js/flash-messages.js}" defer></script>
+  <script th:src="@{/js/period-selects.js}" defer></script>
+<script th:src="@{/js/submit-guard.js}" defer></script>
 
   <a class="brand" th:href="@{/}">
     <span th:text="${activeGroupName!=null?activeGroupName:'一般ユーザー'}">一般ユーザー</span>
@@ -76,7 +79,7 @@
 </header>
 
 <div th:fragment="admin-header" class="site-header admin-nav" role="banner">
-  <span class="ui-config" hidden th:attr="data-select-threshold=${selectSearchThreshold}"></span>
+  <span class="ui-config" hidden th:attr="data-select-threshold=${selectSearchThreshold},data-flash-seconds=${flashMessageSeconds}"></span>
   <span class="latest-version-config" hidden th:attr="data-version=${latestVersion}"></span>
   <script th:src="@{/js/datetime-display.js}" defer></script>
   <script th:src="@{/js/list-search-modal.js}" defer></script>
@@ -86,6 +89,9 @@
   <script th:src="@{/js/required-labels.js}" defer></script>
   <script th:src="@{/js/password-toggle.js}" defer></script>
   <script th:src="@{/js/role-row-highlight.js}" defer></script>
+  <script th:src="@{/js/flash-messages.js}" defer></script>
+  <script th:src="@{/js/period-selects.js}" defer></script>
+<script th:src="@{/js/submit-guard.js}" defer></script>
   <script th:src="@{/js/form-state.js}" defer></script>
   <script th:src="@{/js/touch-sortable.js}" defer></script>
   <script th:src="@{/js/common-footer.js}" defer></script>
