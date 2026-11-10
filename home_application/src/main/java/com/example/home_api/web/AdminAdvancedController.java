@@ -304,7 +304,7 @@ public class AdminAdvancedController {
         page = Math.max(1, page);
         Integer total = jdbc.queryForObject("SELECT count(*) FROM version_info", Integer.class);
         model.addAttribute("state", jdbc.queryForMap("SELECT * FROM system_state WHERE id=1"));
-        model.addAttribute("versions", jdbc.queryForList("SELECT * FROM version_info ORDER BY published_at DESC LIMIT ? OFFSET ?", size, (page - 1) * size));
+        model.addAttribute("versions", jdbc.queryForList("SELECT * FROM version_info ORDER BY published_at DESC,id DESC LIMIT ? OFFSET ?", size, (page - 1) * size));
         model.addAttribute("page", page);
         model.addAttribute("pages", Math.max(1, (int) Math.ceil(total / (double) size)));
         return "admin/maintenance";
@@ -326,7 +326,7 @@ public class AdminAdvancedController {
         page = Math.max(1, page);
         String like = "%" + q + "%";
         Integer total = jdbc.queryForObject("SELECT count(*) FROM version_info WHERE version ILIKE ? OR content ILIKE ?", Integer.class, like, like);
-        model.addAttribute("versions", jdbc.queryForList("SELECT * FROM version_info WHERE version ILIKE ? OR content ILIKE ? ORDER BY published_at DESC LIMIT ? OFFSET ?", like, like, size, (page - 1) * size));
+        model.addAttribute("versions", jdbc.queryForList("SELECT * FROM version_info WHERE version ILIKE ? OR content ILIKE ? ORDER BY published_at DESC,id DESC LIMIT ? OFFSET ?", like, like, size, (page - 1) * size));
         model.addAttribute("q", q);
         model.addAttribute("page", page);
         model.addAttribute("pages", Math.max(1, (int) Math.ceil(total / (double) size)));
@@ -392,7 +392,7 @@ public class AdminAdvancedController {
     private String systemCategoryId(String key){return key.startsWith("line_")?"notification":key.contains("debug")||key.equals("log_page_size")?"log":key.startsWith("backup_")?"backup":key.contains("login_")||key.contains("password_")||key.contains("session_")||key.contains("lock_")?"security":key.contains("time")||key.contains("date")?"datetime":"display";}
 
     private void saveSystemCategoryValues(String category,Map<String,String> values,Authentication auth){
-        values.forEach((name,value)->{if(!name.startsWith("setting_"))return;String key=name.substring(8);if(!category.equals(systemCategoryId(key)))return;if(key.equals("line_token")&&value.isBlank())return;jdbc.update("UPDATE system_setting SET value=?,updated_by=?,updated_at=CURRENT_TIMESTAMP WHERE key=?",value.strip(),auth.getName(),key);});
+        values.forEach((name,value)->{if(!name.startsWith("setting_"))return;String key=name.substring(8);if(!category.equals(systemCategoryId(key)))return;if(key.equals("line_token")&&value.isBlank())return;String normalized=value.strip();if("flash_message_seconds".equals(key)){try{normalized=String.valueOf(Math.max(0,Math.min(60,Integer.parseInt(normalized))));}catch(NumberFormatException ex){normalized="5";}}jdbc.update("UPDATE system_setting SET value=?,updated_by=?,updated_at=CURRENT_TIMESTAMP WHERE key=?",normalized,auth.getName(),key);});
         audit.record(auth.getName(),"POST","/admin/settings/system/"+category,"SETTINGS_UPDATE",category,"システム設定カード更新");
     }
 
