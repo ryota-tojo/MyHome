@@ -74,7 +74,8 @@
 
         .form-actions {
             display: flex;
-            justify-content: flex-end
+            justify-content: flex-end;
+            margin-top: 18px
         }
 
         .amount-button {
@@ -188,6 +189,7 @@
                     </div>
                     <label class="full">ラベル<select class="check-select" name="labelIds" multiple
                                                                    data-select-threshold="1"
+                                                                   data-force-adaptive="true"
                                                                    data-search-placeholder="ラベルを検索・選択">
                     <option th:each="x:${labels}" th:value="${x.id}" th:text="${x.name}"></option>
                 </select></label>
