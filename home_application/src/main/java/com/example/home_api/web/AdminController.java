@@ -25,7 +25,7 @@ public class AdminController {
         model.addAttribute("errorCount",jdbc.queryForObject("SELECT count(*) FROM error_log WHERE created_at>CURRENT_TIMESTAMP-INTERVAL '24 hours'",Integer.class));
         model.addAttribute("databaseOk",true);
         model.addAttribute("state",jdbc.queryForMap("SELECT * FROM system_state WHERE id=1"));
-        model.addAttribute("version",jdbc.queryForList("SELECT * FROM version_info WHERE enabled=true ORDER BY published_at DESC LIMIT 1"));
+        model.addAttribute("version",jdbc.queryForList("SELECT * FROM version_info WHERE enabled=true ORDER BY published_at DESC,id DESC LIMIT 1"));
         model.addAttribute("recentLogs",OperationLogLabels.enrich(jdbc.queryForList("SELECT * FROM operation_log ORDER BY created_at DESC LIMIT 10")));
         model.addAttribute("shoppingCount",jdbc.queryForObject("SELECT count(*) FROM shopping",Integer.class));
         return "admin/dashboard";
