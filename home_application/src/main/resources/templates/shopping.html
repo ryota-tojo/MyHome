@@ -169,31 +169,32 @@
                 <span th:if="${#lists.isEmpty(patterns)}">登録済みの入力パターンはありません。</span></div>
         </section>
             <form id="entry-form" class="entry-form" method="post" th:action="@{/shopping}">
+                <input type="hidden" name="ignoreSimilar" id="ignore-similar" value="false">
                 <section class="panel"><h2>購入データ入力</h2>
                 <div class="entry-grid">
-                    <label><span class="label-title">購入日 <span class="required">必須</span></span><input type="date" name="shoppingDate" th:value="${today}" required></label>
+                    <label><span class="label-title">購入日 <span class="required">必須</span></span><input type="date" name="shoppingDate" th:value="${inputShoppingDate}" required></label>
                     <label><span class="label-title">購入者（メンバー） <span class="required">必須</span></span><select name="memberId" required>
-                        <option th:each="x:${members}" th:value="${x.id}" th:text="${x.name}" th:selected="${x.id==currentUserId}"></option>
+                        <option th:each="x:${members}" th:value="${x.id}" th:text="${x.name}" th:selected="${x.id == inputMemberId}"></option>
                     </select></label>
                     <label><span class="label-title">カテゴリー <span class="required">必須</span></span><select name="categoryId" required>
                         <option value="">選択してください</option>
-                        <option th:each="x:${categories}" th:value="${x.id}" th:text="${x.name}"></option>
+                        <option th:each="x:${categories}" th:value="${x.id}" th:text="${x.name}" th:selected="${x.id == inputCategoryId}"></option>
                     </select></label>
                     <div class="pair-row">
-                        <label><span class="label-title">種別 <span class="required">必須</span></span><select name="type" required><option value="EXPENSE">支出</option><option value="INCOME">収入</option></select></label>
-                        <label><span class="label-title">支払い方法 <span class="required">必須</span></span><select name="paymentMethodId" required><option th:each="x:${payments}" th:value="${x.id}" th:text="${x.name}"></option></select></label>
+                        <label><span class="label-title">種別 <span class="required">必須</span></span><select name="type" required><option value="EXPENSE" th:selected="${inputType == 'EXPENSE'}">支出</option><option value="INCOME" th:selected="${inputType == 'INCOME'}">収入</option></select></label>
+                        <label><span class="label-title">支払い方法 <span class="required">必須</span></span><select name="paymentMethodId" required><option th:each="x:${payments}" th:value="${x.id}" th:text="${x.name}" th:selected="${x.id == inputPaymentMethodId}"></option></select></label>
                     </div>
                     <div class="pair-row">
-                        <label><span class="label-title">金額 <span class="required">必須</span></span><input type="hidden" name="amount" id="amount" value="1"><button type="button" class="amount-button" id="amount-open">1円</button></label>
-                        <label><span class="label-title">精算 <span class="required">必須</span></span><select name="settlement" required><option value="UNSETTLED">未精算</option><option value="SETTLED">精算済</option></select></label>
+                        <label><span class="label-title">金額 <span class="required">必須</span></span><input type="hidden" name="amount" id="amount" th:value="${inputAmount}"><button type="button" class="amount-button" id="amount-open" th:text="${#numbers.formatInteger(inputAmount,1,'COMMA') + '円'}">1円</button></label>
+                        <label><span class="label-title">精算 <span class="required">必須</span></span><select name="settlement" required><option value="UNSETTLED" th:selected="${inputSettlement == 'UNSETTLED'}">未精算</option><option value="SETTLED" th:selected="${inputSettlement == 'SETTLED'}">精算済</option></select></label>
                     </div>
                     <label class="full">ラベル<select class="check-select" name="labelIds" multiple
                                                                    data-select-threshold="1"
                                                                    data-force-adaptive="true"
                                                                    data-search-placeholder="ラベルを検索・選択">
-                    <option th:each="x:${labels}" th:value="${x.id}" th:text="${x.name}"></option>
+                    <option th:each="x:${labels}" th:value="${x.id}" th:text="${x.name}" th:selected="${#lists.contains(inputLabelIds,x.id)}"></option>
                 </select></label>
-                    <label class="full">備考<textarea name="remarks" maxlength="500"></textarea></label>
+                    <label class="full">備考<textarea name="remarks" maxlength="500" th:text="${inputRemarks}"></textarea></label>
                 </div>
                 <div class="form-actions">
                     <button type="submit">登録</button>
@@ -219,7 +220,7 @@
 </main>
 <footer th:replace="~{fragments :: footer}"></footer>
 <dialog id="amount-dialog" class="amount-dialog">
-    <div class="amount-body"><h2>金額入力</h2><input id="amount-input" type="number" min="1" max="2147483647" value="1">
+    <div class="amount-body"><h2>金額入力</h2><input id="amount-input" type="number" min="1" max="2147483647" th:value="${inputAmount}">
         <div class="quick-amounts">
             <button type="button" data-add="100">＋100</button>
             <button type="button" data-add="500">＋500</button>
@@ -231,6 +232,30 @@
         <div class="amount-actions">
             <button type="button" class="secondary" id="amount-cancel">キャンセル</button>
             <button type="button" id="amount-set">設定</button>
+        </div>
+    </div>
+</dialog>
+<dialog id="similar-purchase-dialog" class="similar-purchase-dialog" th:if="${showSimilarDialog}">
+    <div class="similar-purchase-dialog__body">
+        <h2>類似データが既に入力されています</h2>
+        <p>日付・購入者・カテゴリー・種別・ラベル・金額が一致するデータがあります。内容を確認してください。</p>
+        <div class="table-wrap similar-purchase-dialog__table">
+            <table>
+                <thead><tr><th>登録日時</th><th>購入日</th><th>購入者</th><th>カテゴリー</th><th>種別</th><th>ラベル</th><th>金額</th></tr></thead>
+                <tbody><tr th:each="row:${similarRows}">
+                    <td th:text="${#dates.format(row.create_date,'yyyy/MM/dd HH:mm:ss')}"></td>
+                    <td th:text="${#dates.format(row.shopping_date,'yyyy/MM/dd')}"></td>
+                    <td th:text="${row.user_name}"></td>
+                    <td th:text="${row.category_name}"></td>
+                    <td th:text="${row.type == 2 ? '収入' : '支出'}"></td>
+                    <td th:text="${#strings.isEmpty(row.label_names) ? 'なし' : row.label_names}"></td>
+                    <td th:text="${#numbers.formatInteger(row.amount,1,'COMMA') + '円'}"></td>
+                </tr></tbody>
+            </table>
+        </div>
+        <div class="similar-purchase-dialog__actions">
+            <button type="button" class="secondary" id="similar-purchase-cancel">登録をキャンセル</button>
+            <button type="button" id="similar-purchase-continue">無視して登録</button>
         </div>
     </div>
 </dialog>
@@ -281,6 +306,20 @@
             if (b.dataset.note) form.remarks.value = b.dataset.note
         });
         document.querySelectorAll('.history-table tbody tr').forEach(row=>row.addEventListener('click',event=>{if(!event.target.closest('a,button,input'))location.href=row.dataset.url}));
+    })();
+</script>
+<script th:if="${showSimilarDialog}">
+    (() => {
+        const dialog = document.getElementById('similar-purchase-dialog');
+        const form = document.getElementById('entry-form');
+        const ignore = document.getElementById('ignore-similar');
+        document.getElementById('similar-purchase-cancel').addEventListener('click', () => dialog.close());
+        document.getElementById('similar-purchase-continue').addEventListener('click', () => {
+            ignore.value = 'true';
+            dialog.close();
+            form.requestSubmit();
+        });
+        dialog.showModal();
     })();
 </script>
 </body>

@@ -19,8 +19,36 @@ public class PurchaseDataController {
     private final JdbcTemplate jdbc;
     public PurchaseDataController(JdbcTemplate jdbc){this.jdbc=jdbc;}
 
-    @GetMapping("/shopping") String input(HttpSession s,Authentication auth,Model m){String g=group(s);masters(g,m);m.addAttribute("patterns",patterns(g,"INPUT"));m.addAttribute("today",LocalDate.now());m.addAttribute("currentUserId",auth.getName());m.addAttribute("recentPurchases",jdbc.queryForList("SELECT s.id,s.shopping_date,s.type,s.amount,s.settlement,s.fixed_flag,s.create_date,c.category_name,pm.payment_name,u.user_name FROM shopping s LEFT JOIN category c ON c.id=s.category_id LEFT JOIN payment_method pm ON pm.id=s.payment_method_id LEFT JOIN \"user\" u ON u.user_id=s.shopping_user_id WHERE s.group_id=? ORDER BY s.create_date DESC,s.id DESC LIMIT 10",g));return "shopping";}
-    @PostMapping("/shopping") @Transactional String create(@RequestParam MultiValueMap<String,String> p,HttpSession s,Authentication a){String g=group(s);if(isClosed(g,date(p,"shoppingDate")))return "redirect:/shopping?error=closed";insert(g,a.getName(),p);return "redirect:/shopping?created";}
+    @GetMapping("/shopping")
+    String input(HttpSession session, Authentication auth, Model model) {
+        String groupId = group(session);
+        populateInputModel(groupId, auth.getName(), model, null);
+        return "shopping";
+    }
+
+    @PostMapping("/shopping")
+    @Transactional
+    String create(@RequestParam MultiValueMap<String,String> params,
+                  @RequestParam(defaultValue = "false") boolean ignoreSimilar,
+                  HttpSession session, Authentication auth, Model model) {
+        String groupId = group(session);
+        LocalDate shoppingDate = date(params, "shoppingDate");
+        positive(value(params, "amount"));
+        if (isClosed(groupId, shoppingDate)) return "redirect:/shopping?error=closed";
+
+        if (!ignoreSimilar) {
+            List<Map<String,Object>> similarRows = similarPurchases(groupId, params);
+            if (!similarRows.isEmpty()) {
+                populateInputModel(groupId, auth.getName(), model, params);
+                model.addAttribute("similarRows", similarRows);
+                model.addAttribute("showSimilarDialog", true);
+                return "shopping";
+            }
+        }
+
+        insert(groupId, auth.getName(), params);
+        return "redirect:/shopping?created";
+    }
 
     @GetMapping("/shopping/templates") String templates(HttpSession s,Model m){String g=group(s);m.addAttribute("templates",jdbc.queryForList("SELECT p.*,(SELECT string_agg(c.category_name,'、' ORDER BY c.category_no) FROM category c WHERE c.id=ANY(string_to_array(COALESCE(p.category_ids,''),','))) category_names,(SELECT string_agg(pm.payment_name,'、' ORDER BY pm.payment_no) FROM payment_method pm WHERE pm.id=ANY(string_to_array(COALESCE(p.payment_method_ids,''),','))) payment_names,(SELECT string_agg(u.user_name,'、' ORDER BY gm.member_no,u.user_name) FROM group_member gm JOIN \"user\" u ON u.user_id=gm.user_id WHERE gm.group_id=p.group_id AND u.user_id=ANY(string_to_array(COALESCE(p.member_ids,''),','))) member_names,(SELECT string_agg(sl.label_name,'、' ORDER BY sl.label_no) FROM shopping_label sl WHERE sl.id=ANY(string_to_array(COALESCE(p.label_ids,''),','))) label_names FROM purchase_pattern p WHERE p.group_id=? AND p.pattern_type='TEMPLATE' AND p.disabled_flag=0 ORDER BY p.display_no",g));m.addAttribute("today",LocalDate.now());return "purchase-template-entry";}
     @PostMapping("/shopping/templates") @Transactional String templatesCreate(@RequestParam(required=false) List<String> templateIds,@RequestParam String shoppingDate,HttpSession s,Authentication a){String g=group(s);if(templateIds==null||templateIds.isEmpty())return "redirect:/shopping/templates?error=unselected";LocalDate d=parseDate(shoppingDate);if(isClosed(g,d))return "redirect:/shopping/templates?error=closed";List<Map<String,Object>> selected=new ArrayList<>();for(String id:templateIds.stream().distinct().toList()){var rows=jdbc.queryForList("SELECT * FROM purchase_pattern WHERE id=? AND group_id=? AND pattern_type='TEMPLATE' AND disabled_flag=0",id,g);if(rows.isEmpty())return "redirect:/shopping/templates?error=missing";Map<String,Object>x=rows.get(0);if(x.get("amount")==null||first(x.get("category_ids"),null)==null||first(x.get("payment_method_ids"),null)==null)return "redirect:/shopping/templates?error=incomplete";selected.add(x);}for(Map<String,Object>x:selected)insertTemplate(g,a.getName(),d,x);return "redirect:/shopping/templates?created="+selected.size();}
@@ -40,6 +68,35 @@ public class PurchaseDataController {
     @PostMapping("/group/monthly/{year}/{month}/reopen") @Transactional String reopen(@PathVariable int year,@PathVariable int month,HttpSession s){String g=group(s);jdbc.update("DELETE FROM fixed WHERE group_id=? AND year=? AND month=?",g,year,month);jdbc.update("UPDATE shopping SET fixed_flag=0,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND EXTRACT(YEAR FROM shopping_date)=? AND EXTRACT(MONTH FROM shopping_date)=?",g,year,month);jdbc.update("UPDATE budgets SET fixed_flag=0,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND year=? AND month=?",g,year,month);return "redirect:/group/monthly/"+year+"/"+month+"?reopened";}
 
     private void insert(String g,String user,MultiValueMap<String,String>p){jdbc.update("INSERT INTO shopping(group_id,shopping_date,shopping_user_id,category_id,type,payment,settlement,amount,shopping_label_id,remarks,create_user_id,fixed_flag,create_date,update_date,payment_method_id,shopping_label_ids) VALUES (?,?,?,?,?,0,?,?,NULL,?,?,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,?,?)",g,Timestamp.valueOf(date(p,"shoppingDate").atStartOfDay()),value(p,"memberId"),value(p,"categoryId"),type(value(p,"type")),settlement(value(p,"settlement")),positive(value(p,"amount")),value(p,"remarks"),user,value(p,"paymentMethodId"),csv(p,"labelIds"));}
+    private void populateInputModel(String groupId,String currentUserId,Model model,MultiValueMap<String,String> params){
+        masters(groupId,model);
+        model.addAttribute("patterns",patterns(groupId,"INPUT"));
+        model.addAttribute("currentUserId",currentUserId);
+        model.addAttribute("inputShoppingDate",params==null?LocalDate.now().toString():value(params,"shoppingDate"));
+        model.addAttribute("inputMemberId",params==null?currentUserId:value(params,"memberId"));
+        model.addAttribute("inputCategoryId",params==null?"":value(params,"categoryId"));
+        model.addAttribute("inputType",params==null?"EXPENSE":value(params,"type"));
+        model.addAttribute("inputPaymentMethodId",params==null?"":value(params,"paymentMethodId"));
+        model.addAttribute("inputAmount",params==null?1:positive(value(params,"amount")));
+        model.addAttribute("inputSettlement",params==null?"UNSETTLED":value(params,"settlement"));
+        model.addAttribute("inputLabelIds",params==null?List.of():Optional.ofNullable(params.get("labelIds")).orElse(List.of()));
+        model.addAttribute("inputRemarks",params==null?"":value(params,"remarks"));
+        model.addAttribute("recentPurchases",jdbc.queryForList("SELECT s.id,s.shopping_date,s.type,s.amount,s.settlement,s.fixed_flag,s.create_date,c.category_name,pm.payment_name,u.user_name FROM shopping s LEFT JOIN category c ON c.id=s.category_id LEFT JOIN payment_method pm ON pm.id=s.payment_method_id LEFT JOIN \"user\" u ON u.user_id=s.shopping_user_id WHERE s.group_id=? ORDER BY s.create_date DESC,s.id DESC LIMIT 10",groupId));
+    }
+    private List<Map<String,Object>> similarPurchases(String groupId,MultiValueMap<String,String> params){
+        String sql="SELECT s.id,s.shopping_date,s.type,s.amount,s.create_date,u.user_name,c.category_name,pm.payment_name,"+
+                "COALESCE((SELECT string_agg(sl.label_name,'、' ORDER BY sl.label_no) FROM shopping_label sl WHERE sl.group_id=s.group_id AND sl.id=ANY(string_to_array(COALESCE(s.shopping_label_ids,''),','))),'') label_names " +
+                "FROM shopping s LEFT JOIN \"user\" u ON u.user_id=s.shopping_user_id LEFT JOIN category c ON c.id=s.category_id LEFT JOIN payment_method pm ON pm.id=s.payment_method_id " +
+                "WHERE s.group_id=? AND s.shopping_date::date=? AND s.shopping_user_id=? AND s.category_id=? AND s.type=? AND s.amount=? " +
+                "AND COALESCE((SELECT string_agg(label_id,',' ORDER BY label_id) FROM unnest(string_to_array(COALESCE(s.shopping_label_ids,''),',')) label_id WHERE label_id<>''),'')=? " +
+                "ORDER BY s.create_date DESC,s.id DESC";
+        return jdbc.queryForList(sql,groupId,java.sql.Date.valueOf(date(params,"shoppingDate")),value(params,"memberId"),value(params,"categoryId"),type(value(params,"type")),positive(value(params,"amount")),canonicalLabels(params));
+    }
+    private String canonicalLabels(MultiValueMap<String,String> params){
+        List<String> labels=params.get("labelIds");
+        if(labels==null)return "";
+        return labels.stream().filter(Objects::nonNull).map(String::strip).filter(v->!v.isBlank()).distinct().sorted().collect(java.util.stream.Collectors.joining(","));
+    }
     private void insertTemplate(String g,String user,LocalDate d,Map<String,Object>x){jdbc.update("INSERT INTO shopping(group_id,shopping_date,shopping_user_id,category_id,type,payment,settlement,amount,shopping_label_id,remarks,create_user_id,fixed_flag,create_date,update_date,payment_method_id,shopping_label_ids) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,?,?)",g,Timestamp.valueOf(d.atStartOfDay()),first(x.get("member_ids"),user),first(x.get("category_ids"),null),type(x.get("transaction_type")),0,settlement(x.get("settlement_status")),number(x.get("amount")),null,text(x.get("note")),user,first(x.get("payment_method_ids"),null),text(x.get("label_ids")));}
     private void masters(String g,Model m){m.addAttribute("categories",jdbc.queryForList("SELECT id,category_name name FROM category WHERE group_id=? AND disabled_flag=0 ORDER BY category_no",g));m.addAttribute("payments",jdbc.queryForList("SELECT id,payment_name name FROM payment_method WHERE group_id=? AND disabled_flag=0 ORDER BY payment_no",g));m.addAttribute("labels",jdbc.queryForList("SELECT id,label_name name FROM shopping_label WHERE group_id=? AND disabled_flag=0 ORDER BY label_no",g));m.addAttribute("members",jdbc.queryForList("SELECT u.user_id id,u.user_name name FROM group_member gm JOIN \"user\" u ON u.user_id=gm.user_id WHERE gm.group_id=? AND gm.approve_flag=1 AND u.delete_flag=0 ORDER BY gm.member_no,u.user_name,u.user_id",g));}
     private List<Map<String,Object>>patterns(String g,String t){return jdbc.queryForList("SELECT * FROM purchase_pattern WHERE group_id=? AND pattern_type=? AND disabled_flag=0 ORDER BY display_no",g,t);}
