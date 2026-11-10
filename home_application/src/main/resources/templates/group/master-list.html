@@ -15,7 +15,7 @@
   <div class="success management-message" th:if="${param.updated}">更新しました。</div>
   <div class="success management-message" th:if="${param.deleted}">削除しました。</div>
   <div class="success management-message" th:if="${param.sorted}">表示順を更新しました。</div>
-  <div class="alert management-message" th:if="${param.error != null}" th:text="${param.error[0]=='last'?'最低1件の有効な項目が必要です。':param.error[0]=='duplicate'?'同じ表示名は登録できません。':param.error[0]=='inUse'?(type=='kanban-lanes'?'タスクが紐づいているレーンは無効化・削除できません。':'購入データなどから参照されているため削除できません。'):param.error[0]=='disableFirst'?'削除する前に無効化してください。':'入力内容を確認してください。'}"></div>
+<div class="alert management-message" th:if="${param.error != null}" th:text="${param.error[0] == 'last' ? '最低1件の有効な項目が必要です。' : (param.error[0] == 'duplicate' ? '同じ表示名は登録できません。' : (param.error[0] == 'inUse' ? (type == 'kanban-lanes' ? 'タスクが紐づいているレーンは無効化・削除できません。' : '購入データなどから参照されているため削除できません。') : (param.error[0] == 'disableFirst' ? '削除する前に無効化してください。' : '入力内容を確認してください。')))}"></div>
   <section class="panel management-panel">
     <div class="master-toolbar"><p class="master-note">左のハンドルをドラッグして表示順を変更できます。</p><div class="master-toolbar__actions"><button type="button" class="secondary auto-sort-open">自動並び替え</button><button type="button" class="add-button" id="create-open" aria-label="新規登録">＋</button></div></div>
     <ul id="sortable" class="sortable-list" data-touch-sortable th:attr="data-order-url=@{/group/masters/{type}/order(type=${type})}">
