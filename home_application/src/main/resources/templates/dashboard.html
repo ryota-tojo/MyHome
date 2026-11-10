@@ -48,12 +48,12 @@
     </section>
     <section class="cards">
         <article><span>収入</span><strong class="income"
-                                          th:text="|¥${#numbers.formatInteger(summary.income,1,'COMMA')}|">0</strong>
+                th:text="${'¥' + #numbers.formatInteger(summary.income, 1, 'COMMA')}">0</strong>
         </article>
         <article><span>支出</span><strong class="expense"
-                                          th:text="|¥${#numbers.formatInteger(summary.expense,1,'COMMA')}|">0</strong>
+                th:text="${'¥' + #numbers.formatInteger(summary.expense, 1, 'COMMA')}">0</strong>
         </article>
-        <article><span>収支</span><strong th:text="|¥${#numbers.formatInteger(summary.balance,1,'COMMA')}|">0</strong>
+            <article><span>収支</span><strong th:text="${'¥' + #numbers.formatInteger(summary.balance, 1, 'COMMA')}">0</strong>
         </article>
     </section>
     <section class="grid">
@@ -61,7 +61,7 @@
             <div th:each="r:${categorySummary}" class="bar-row"><span th:text="${r.category_name}"></span>
                 <div class="bar"><i
                         th:style="|width:${summary.expense == 0 ? 0 : (r.amount * 100 / summary.expense)}%|"></i></div>
-                <b th:text="|¥${#numbers.formatInteger(r.amount,1,'COMMA')}|"></b></div>
+                            <b th:text="${'¥' + #numbers.formatInteger(r.amount, 1, 'COMMA')}"></b></div>
         </article>
         <article class="panel"><h2>最近の購入</h2>
             <table>
@@ -73,7 +73,7 @@
                 <tr th:each="r:${recent}">
                     <td th:text="${#dates.format(r.shopping_date,'MM/dd')}"></td>
                     <td th:text="${r.category_name}"></td>
-                    <td th:text="|¥${#numbers.formatInteger(r.amount,1,'COMMA')}|"></td>
+                            <td th:text="${'¥' + #numbers.formatInteger(r.amount, 1, 'COMMA')}"></td>
                 </tr>
             </table>
         </article>

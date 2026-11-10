@@ -43,7 +43,7 @@
         </fieldset>
         <div class="form-actions"><button type="submit" th:disabled="${row.monthly_closed==1}">更新</button></div>
       </form>
-      <form method="post" th:action="@{|/group/purchases/${row.id}/delete|}" onsubmit="return confirm('この購入データを削除しますか？')"><div class="delete-actions"><button class="danger" th:disabled="${row.monthly_closed==1 or row.settlement==2}" th:title="${row.monthly_closed==1?'月次確定済みの購入データは削除できません。':row.settlement==2?'精算済みの購入データは削除できません。':null}">削除</button></div></form>
+<form method="post" th:action="@{|/group/purchases/${row.id}/delete|}" onsubmit="return confirm('この購入データを削除しますか？')"><div class="delete-actions"><button class="danger" th:disabled="${row.monthly_closed == 1 or row.settlement == 2}" th:title="${row.monthly_closed == 1 ? '月次確定済みの購入データは削除できません。' : (row.settlement == 2 ? '精算済みの購入データは削除できません。' : null)}">削除</button></div></form>
     </section>
   </div>
 </main>
