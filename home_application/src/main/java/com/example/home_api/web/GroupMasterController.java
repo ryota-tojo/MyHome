@@ -8,8 +8,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.text.Collator;
-import java.text.Normalizer;
 import java.util.*;
 
 @Controller
@@ -108,28 +106,6 @@ public class GroupMasterController {
         for(String id:ids) jdbc.update("UPDATE "+d.table()+" SET "+d.orderCol()+"=?,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND id=?",no++,group,id);
         return Map.of("ok",true);
     }
-
-    @PostMapping("/{type}/auto-order") @Transactional
-    String autoOrder(@PathVariable String type,@RequestParam String sortBy,@RequestParam String direction,HttpSession session) {
-        String group=groupForType(session,type);MasterDef d=def(type);
-        String order="desc".equalsIgnoreCase(direction)?"DESC":"ASC";
-        List<String>ids;
-        if("name".equals(sortBy)){
-            List<Map<String,Object>>rows=jdbc.queryForList("SELECT id,"+d.nameCol()+" AS name FROM "+d.table()+" WHERE group_id=?",group);
-            Comparator<Map<String,Object>>comparator=Comparator.comparingInt((Map<String,Object> row)->nameCategory(Objects.toString(row.get("name"),""))).thenComparing(row->normalizedName(Objects.toString(row.get("name"),"")),japaneseCollator()).thenComparing(row->Objects.toString(row.get("id"),""));
-            if("DESC".equals(order))comparator=comparator.reversed();
-            rows.sort(comparator);ids=rows.stream().map(row->Objects.toString(row.get("id"),"")).toList();
-        }else{
-            String column=switch(sortBy){case "created"->"create_date";case "updated"->"update_date";case "status"->"disabled_flag";default->throw new IllegalArgumentException("不正な並び替え条件です");};
-            ids=jdbc.queryForList("SELECT id FROM "+d.table()+" WHERE group_id=? ORDER BY "+column+" "+order+" NULLS LAST,id ASC",String.class,group);
-        }
-        int no=1;for(String id:ids)jdbc.update("UPDATE "+d.table()+" SET "+d.orderCol()+"=? WHERE group_id=? AND id=?",no++,group,id);
-        return "redirect:/group/masters/"+type+"?sorted";
-    }
-
-    private Collator japaneseCollator(){Collator collator=Collator.getInstance(Locale.JAPANESE);collator.setStrength(Collator.TERTIARY);return collator;}
-    private String normalizedName(String value){return Normalizer.normalize(value==null?"":value,Normalizer.Form.NFKC);}
-    private int nameCategory(String value){String normalized=normalizedName(value);if(normalized.isBlank())return 4;int code=normalized.codePointAt(0);if(Character.isDigit(code))return 0;if((code>='A'&&code<='Z')||(code>='a'&&code<='z'))return 1;if(code>=0x3040&&code<=0x30ff)return 2;if(Character.UnicodeScript.of(code)==Character.UnicodeScript.HAN)return 3;return 4;}
 
     private String groupForType(HttpSession session,String type){Object group=session.getAttribute("activeGroupId");if(group==null)throw new IllegalStateException("所属グループを選択してください");if(!"labels".equals(type)&&!Boolean.TRUE.equals(session.getAttribute("activeGroupLeader")))throw new IllegalStateException("リーダー権限が必要です");return group.toString();}
     private void ensureDefaultLanes(String group){Integer count=jdbc.queryForObject("SELECT count(*) FROM kanban_lane WHERE group_id=?",Integer.class,group);if(count!=null&&count>0)return;int no=1;for(String name:List.of("未着手","進行中","完了"))jdbc.update("INSERT INTO kanban_lane(id,group_id,lane_no,lane_name) VALUES (?,?,?,?)","lane-"+UUID.randomUUID().toString().substring(0,12),group,no++,name);}

@@ -47,7 +47,7 @@
 <div class="analysis-wrap">
 <section class="panel">
 <form class="year-form" method="get" th:action="@{/group/analysis/year-comparison}">
-<label>対象年<select name="year" required><option th:each="y:${yearOptions}" th:value="${y}" th:text="|${y}年|" th:selected="${y==year}"></option></select>
+<label>対象年<input type="number" name="year" min="2001" max="2100" th:value="${year}" required>
 </label>
 <button>表示</button>
 </form>

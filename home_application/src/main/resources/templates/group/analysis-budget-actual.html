@@ -59,7 +59,7 @@
 <div class="analysis-wrap">
 <section class="panel">
 <form class="condition-form" method="get" th:action="@{/group/analysis/budget-actual}">
-<label>対象年<select name="year" required><option th:each="y:${yearOptions}" th:value="${y}" th:text="|${y}年|" th:selected="${y==year}"></option></select>
+<label>対象年<input type="number" name="year" min="2000" max="2100" th:value="${year}" required>
 </label>
 <fieldset>
 <legend>対象月（複数選択可）</legend>
@@ -85,7 +85,7 @@
 <strong th:text="${r.category_name}">
 </strong>
 <div class="bar-area">
-<div class="bar budget" th:style="|width:${r.budget_width}%|" th:title="${'予算＋収入 ' + r.available + '円'}">
+<div class="bar budget" th:style="|width:${r.budget_width}%|" th:title="|予算＋収入 ${r.available}円|">
 <span class="bar-value" th:text="|${#numbers.formatInteger(r.available,1,'COMMA')}円|">0円</span>
 </div>
 <div class="bar actual" th:style="|width:${r.expense_width}%|" th:title="|支出 ${r.expense}円|">
@@ -95,9 +95,9 @@
 <div class="metrics">
 <span th:text="|支出 ${#numbers.formatInteger(r.expense,1,'COMMA')}円|">
 </span>
-<span th:text="${'予算 ' + #numbers.formatInteger(r.budget, 1, 'COMMA') + '円 ＋ 収入 ' + #numbers.formatInteger(r.income, 1, 'COMMA') + '円'}">
+<span th:text="|予算 ${#numbers.formatInteger(r.budget,1,'COMMA')}円 ＋ 収入 ${#numbers.formatInteger(r.income,1,'COMMA')}円|">
 </span>
-<span th:text="${'平均／月 ' + #numbers.formatInteger(r.average, 1, 'COMMA') + '円'}">
+<span th:text="|平均／月 ${#numbers.formatInteger(r.average,1,'COMMA')}円|">
 </span>
 <span th:text="|使用率 ${r.rate}%|">
 </span>
@@ -116,11 +116,11 @@
 </div>
 <div class="annual-cards">
 <article class="annual-card" th:each="card:${annualCards}" th:classappend="${card.totalCard}?' total-card':''">
-<div class="annual-card__header"><h3 th:text="${card.name}">カテゴリー</h3><div class="annual-card__totals"><span th:text="${'予算＋収入 ' + #numbers.formatInteger(card.available, 1, 'COMMA') + '円'}"></span><span th:text="${'支出 ' + #numbers.formatInteger(card.expense, 1, 'COMMA') + '円'}"></span><span th:text="${'使用率 ' + card.rate + '%'}"></span><span th:text="${'残金 ' + #numbers.formatInteger(card.remaining, 1, 'COMMA') + '円'}"></span></div></div>
+<div class="annual-card__header"><h3 th:text="${card.name}">カテゴリー</h3><div class="annual-card__totals"><span th:text="|予算＋収入 ${#numbers.formatInteger(card.available,1,'COMMA')}円|"></span><span th:text="|支出 ${#numbers.formatInteger(card.expense,1,'COMMA')}円|"></span><span th:text="|使用率 ${card.rate}%|"></span><span th:text="|残金 ${#numbers.formatInteger(card.remaining,1,'COMMA')}円|"></span></div></div>
 <div class="annual-chart-scroll"><div class="annual-chart">
 <div class="annual-month" th:each="month:${card.months}">
 <div class="annual-bars">
-<div class="annual-vbar budget" th:style="|height:${month.available_width}%|" th:title="${'予算＋収入 ' + #numbers.formatInteger(month.available, 1, 'COMMA') + '円'}"><span th:text="|${#numbers.formatInteger(month.available,1,'COMMA')}円|">0円</span></div>
+<div class="annual-vbar budget" th:style="|height:${month.available_width}%|" th:title="|予算＋収入 ${#numbers.formatInteger(month.available,1,'COMMA')}円|"><span th:text="|${#numbers.formatInteger(month.available,1,'COMMA')}円|">0円</span></div>
 <div class="annual-vbar actual" th:style="|height:${month.expense_width}%|" th:title="|支出 ${#numbers.formatInteger(month.expense,1,'COMMA')}円|"><span th:text="|${#numbers.formatInteger(month.expense,1,'COMMA')}円|">0円</span></div>
 </div><span class="annual-month-label" th:text="|${month.month}月|">1月</span>
 </div>

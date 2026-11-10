@@ -26,7 +26,7 @@
           <div class="setting-row" th:each="s:${card.settings}">
             <label>
               <span class="setting-label"><strong th:text="${s.description}"></strong><small th:text="${s.key}"></small></span>
-<input th:if="${!#strings.contains(s.key,'enabled') and s.key != 'line_token'}" th:type="${s.key == 'line_url' ? 'url' : (s.key == 'flash_message_seconds' ? 'number' : 'text')}" th:min="${s.key == 'flash_message_seconds' ? 0 : null}" th:max="${s.key == 'flash_message_seconds' ? 60 : null}" th:name="${'setting_' + s.key}" th:value="${s.value}">
+              <input th:if="${!#strings.contains(s.key,'enabled') and s.key!='line_token'}" th:type="${s.key=='line_url'?'url':'text'}" th:name="${'setting_'+s.key}" th:value="${s.value}">
               <select th:if="${#strings.contains(s.key,'enabled')}" th:name="${'setting_'+s.key}"><option value="true" th:selected="${s.value=='true'}">有効</option><option value="false" th:selected="${s.value!='true'}">無効</option></select>
               <input th:if="${s.key=='line_token'}" type="text" th:name="${'setting_'+s.key}" th:value="${s.value}" autocomplete="off">
             </label>

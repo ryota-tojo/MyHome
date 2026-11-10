@@ -23,9 +23,9 @@ public class AdminInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         jdbc.update("INSERT INTO group_setting_master(key,init_value,remarks,create_date,update_date) VALUES ('display_year',?,'家計簿の表示対象年',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON CONFLICT(key) DO NOTHING", String.valueOf(java.time.LocalDate.now().getYear()));
-        for (String groupId : jdbc.queryForList("SELECT g.group_id FROM \"group\" g WHERE g.status='ACTIVE' AND NOT EXISTS(SELECT 1 FROM payment_method p WHERE p.group_id=g.group_id)", String.class))
-            for (int i = 0; i < GroupDefaults.PAYMENT_METHODS.size(); i++)
-                jdbc.update("INSERT INTO payment_method(id,group_id,payment_no,payment_name,disabled_flag) VALUES (?,?,?,?,0)", "pay-" + java.util.UUID.randomUUID().toString().substring(0, 12), groupId, i + 1, GroupDefaults.PAYMENT_METHODS.get(i));
+        for(String groupId:jdbc.queryForList("SELECT g.group_id FROM \"group\" g WHERE g.status='ACTIVE' AND NOT EXISTS(SELECT 1 FROM payment_method p WHERE p.group_id=g.group_id)",String.class))
+            for(int i=0;i<GroupDefaults.PAYMENT_METHODS.size();i++)
+                jdbc.update("INSERT INTO payment_method(id,group_id,payment_no,payment_name,disabled_flag) VALUES (?,?,?,?,0)","pay-"+java.util.UUID.randomUUID().toString().substring(0,12),groupId,i+1,GroupDefaults.PAYMENT_METHODS.get(i));
         jdbc.execute("INSERT INTO system_state(id) VALUES(1) ON CONFLICT(id) DO NOTHING");
         jdbc.update("UPDATE system_setting SET key='uploaded_font.legacy',description=value,updated_at=CURRENT_TIMESTAMP WHERE key='uploaded_font' AND NOT EXISTS(SELECT 1 FROM system_setting WHERE key='uploaded_font.legacy')");
         jdbc.update("DELETE FROM system_setting WHERE key='uploaded_font'");
@@ -63,13 +63,10 @@ public class AdminInitializer implements ApplicationRunner {
         putDefault("timezone", "Asia/Tokyo", "タイムゾーン");
         putDefault("datetime_format", "yyyy/MM/dd HH:mm:ss", "日時表示形式");
         putDefault("select_search_threshold", "8", "検索可能プルダウン切替件数");
-        putDefault("flash_message_seconds", "5", "登録・更新メッセージ表示秒数");
         putDefault("ui_scale", "100", "画面全体の拡大率(%)");
         putDefault("font_size", "16", "共通フォントサイズ(px)");
         jdbc.update("UPDATE system_setting SET value='#EBEBEB',updated_at=CURRENT_TIMESTAMP WHERE key IN ('admin_header_color','user_header_color') AND value IN ('#d5f2ca','#e8e8e8','#f8f9fa')");
         jdbc.update("UPDATE system_setting SET value='#FAEBD7',updated_at=CURRENT_TIMESTAMP WHERE key='user_body_color' AND lower(value)='antiquewhite'");
-        for (DefaultVersion version : DefaultVersion.values())
-            jdbc.update("INSERT INTO version_info(version,published_at,content,enabled) VALUES (?,?,?,?) ON CONFLICT(version) DO NOTHING", version.version(), version.publishedAt(), version.content(), version.enabled());
         LocalDateTime now = LocalDateTime.now();
         var admin = jdbc.queryForList("SELECT user_id,user_password FROM \"user\" WHERE permission_flag=2 AND delete_flag=0 ORDER BY create_date LIMIT 1");
         if (admin.isEmpty()) {

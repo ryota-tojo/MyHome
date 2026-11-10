@@ -37,13 +37,13 @@
               <label><span class="label-title">金額 <span class="required">必須</span></span><input type="hidden" name="amount" id="amount" th:value="${row.amount}" required><button type="button" class="amount-button" id="amount-open" th:text="|${#numbers.formatInteger(row.amount,1,'COMMA')}円|">1円</button></label>
               <label><span class="label-title">精算 <span class="required">必須</span></span><select name="settlement" required><option value="UNSETTLED" th:selected="${row.settlement==1}">未精算</option><option value="SETTLED" th:selected="${row.settlement==2}">精算済</option></select></label>
             </div>
-            <label class="full">ラベル<select class="check-select" name="labelIds" multiple data-select-threshold="1" data-force-adaptive="true" data-search-placeholder="ラベルを検索・選択"><option th:each="x:${labels}" th:value="${x.id}" th:text="${x.name}" th:selected="${row.shopping_label_ids!=null and #lists.contains(#strings.arraySplit(row.shopping_label_ids,','),x.id)}"></option></select></label>
+            <label class="full">ラベル<select class="check-select" name="labelIds" multiple data-select-threshold="1" data-search-placeholder="ラベルを検索・選択"><option th:each="x:${labels}" th:value="${x.id}" th:text="${x.name}" th:selected="${row.shopping_label_ids!=null and #lists.contains(#strings.arraySplit(row.shopping_label_ids,','),x.id)}"></option></select></label>
             <label class="full">備考<textarea name="remarks" maxlength="500" th:text="${row.remarks}"></textarea></label>
           </div>
         </fieldset>
         <div class="form-actions"><button type="submit" th:disabled="${row.monthly_closed==1}">更新</button></div>
       </form>
-<form method="post" th:action="@{|/group/purchases/${row.id}/delete|}" onsubmit="return confirm('この購入データを削除しますか？')"><div class="delete-actions"><button class="danger" th:disabled="${row.monthly_closed == 1 or row.settlement == 2}" th:title="${row.monthly_closed == 1 ? '月次確定済みの購入データは削除できません。' : (row.settlement == 2 ? '精算済みの購入データは削除できません。' : null)}">削除</button></div></form>
+      <form method="post" th:action="@{|/group/purchases/${row.id}/delete|}" onsubmit="return confirm('この購入データを削除しますか？')"><div class="delete-actions"><button class="danger" th:disabled="${row.monthly_closed==1 or row.settlement==2}" th:title="${row.monthly_closed==1?'月次確定済みの購入データは削除できません。':row.settlement==2?'精算済みの購入データは削除できません。':null}">削除</button></div></form>
     </section>
   </div>
 </main>

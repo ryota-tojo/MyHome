@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.*;import jakarta.servlet.http.HttpServletR
     private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final PasswordEncoder encoder;private final AdminInitializer initializer;private final AdminAuditService audit;
     public AdminDataController(JdbcTemplate jdbc,ObjectMapper mapper,PasswordEncoder encoder,AdminInitializer initializer,AdminAuditService audit){this.jdbc=jdbc;this.mapper=mapper.copy().disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);this.encoder=encoder;this.initializer=initializer;this.audit=audit;}
     @GetMapping String page(){return "redirect:/admin/data/backup";}
-    @GetMapping("/backup")String backupPage(Model model){model.addAttribute("counts",counts());model.addAttribute("homeImageCount",jdbc.queryForObject("SELECT count(*) FROM group_setting WHERE key='home_image_file' AND value IS NOT NULL AND value<>''",Integer.class));try{model.addAttribute("fontCount",fontFileNames().size());}catch(IOException ex){throw new UncheckedIOException(ex);}return "admin/data-backup";}
+    @GetMapping("/backup")String backupPage(Model model){model.addAttribute("counts",counts());model.addAttribute("homeImageCount",jdbc.queryForObject("SELECT count(*) FROM group_setting WHERE key='home_image_file' AND value IS NOT NULL AND value<>''",Integer.class));model.addAttribute("fontCount",jdbc.queryForObject("SELECT count(*) FROM system_setting WHERE key LIKE 'uploaded_font.%' AND value IS NOT NULL AND value<>''",Integer.class));return "admin/data-backup";}
     @GetMapping("/import")String importPage(){return "admin/data-import";}
     @GetMapping("/initialize")String initializePage(Model model){model.addAttribute("counts",counts());return "admin/data-initialize";}
     @GetMapping("/export")void export(Authentication auth,HttpServletResponse response)throws IOException{Map<String,Object>backup=new LinkedHashMap<>();backup.put("format",BACKUP_FORMAT_V3);backup.put("createdAt",LocalDateTime.now().toString());Map<String,Object>data=new LinkedHashMap<>();for(String t:TABLES)data.put(t.replace("\"",""),jdbc.queryForList("SELECT * FROM "+t));backup.put("data",data);Map<String,Object>files=new LinkedHashMap<>();List<Map<String,String>>homeImages=exportGroupHomeImages();List<Map<String,String>>fonts=exportFonts();files.put("groupHomeImages",homeImages);files.put("fonts",fonts);backup.put("files",files);byte[]body=mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(backup);response.setContentType("application/json");response.setHeader("Content-Disposition","attachment; filename=home-backup-"+LocalDate.now()+".json");response.getOutputStream().write(body);audit.record(auth.getName(),"GET","/admin/data/export","BACKUP_EXPORT",null,"全データ・所属グループ画像・フォントエクスポート（画像"+homeImages.size()+"件、フォント"+fonts.size()+"件）");}
@@ -53,17 +53,10 @@ import com.fasterxml.jackson.databind.*;import jakarta.servlet.http.HttpServletR
         return files;
     }
     private List<Map<String,String>>exportFonts()throws IOException{
-        List<String>names=fontFileNames();
+        List<String>names=jdbc.query("SELECT DISTINCT value FROM system_setting WHERE key LIKE 'uploaded_font.%' AND value IS NOT NULL AND value<>'' ORDER BY value",(rs,rowNum)->rs.getString(1));
         List<Map<String,String>>files=new ArrayList<>();long total=0;
         for(String name:names){Path path=safeFontPath(name);if(!Files.isRegularFile(path))throw new IOException("アップロードフォントが見つかりません: "+name);byte[]bytes=Files.readAllBytes(path);if(bytes.length>MAX_FONT_SIZE||!isSupportedFont(name,bytes))throw new IOException("アップロードフォントが不正です: "+name);total+=bytes.length;if(total>MAX_FONTS_SIZE)throw new IOException("アップロードフォントの合計サイズが上限を超えています");Map<String,String>item=new LinkedHashMap<>();item.put("name",name);item.put("data",Base64.getEncoder().encodeToString(bytes));files.add(item);}
         return files;
-    }
-    private List<String>fontFileNames()throws IOException{
-        SortedSet<String>names=new TreeSet<>();
-        List<Map<String,Object>>settings=jdbc.queryForList("SELECT key,value FROM system_setting WHERE (key LIKE 'uploaded_font.%' OR key IN ('admin_font_family','user_font_family')) AND value IS NOT NULL AND value<>''");
-        for(Map<String,Object>setting:settings){String key=Objects.toString(setting.get("key"),"");String name=Objects.toString(setting.get("value"),"");boolean uploaded=key.startsWith("uploaded_font.");boolean selected=("admin_font_family".equals(key)||"user_font_family".equals(key))&&name.matches("[0-9a-fA-F-]{36}\\.(ttf|otf)");if(uploaded||selected){safeFontPath(name);names.add(name);}}
-        if(Files.isDirectory(FONT_DIR)){try(var paths=Files.list(FONT_DIR)){for(Path path:paths.filter(Files::isRegularFile).toList()){String name=path.getFileName().toString();if(name.matches("[0-9a-fA-F-]{36}\\.(ttf|otf)"))names.add(name);}}}
-        return new ArrayList<>(names);
     }
     private Map<String,byte[]>readGroupHomeImages(JsonNode root)throws IOException{
         JsonNode images=root.path("files").path("groupHomeImages");if(!images.isArray())throw new IOException("所属グループ画像情報がありません");Map<String,byte[]>result=new LinkedHashMap<>();long total=0;

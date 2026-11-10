@@ -29,8 +29,8 @@
 .search-actions,.bulk-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 .summary-action-row{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;gap:18px;width:min(1298px,100%);margin:0 auto 18px}
 .selection-card{display:flex;flex-direction:column;width:100%;box-sizing:border-box;margin:0;padding:18px 22px;background:#fff;border:1px solid #dbe3e9;border-radius:14px;box-shadow:0 4px 14px #2233440b}
-.selection-card .bulk-actions{align-items:flex-end;flex-direction:column;margin-top:auto;padding-top:16px;width:100%}
-.settlement-actions{display:flex;justify-content:flex-end;gap:10px}
+.selection-card .bulk-actions{align-items:center;margin-top:auto;padding-top:16px}
+.selection-card .bulk-actions{width:100%}
 .selection-card .selected-total{margin-right:auto}
 .summary-title{min-height:28px;margin:0 0 14px;font-size:1.15rem;line-height:28px}
 .summary-card{display:flex;flex-direction:column;width:100%;box-sizing:border-box;background:#fff;border:1px solid #dbe3e9;border-radius:14px;padding:18px 22px;margin:0;box-shadow:0 4px 14px #2233440b}
@@ -51,7 +51,7 @@
 .data-table th,.data-table td{padding:11px 10px;border-bottom:1px solid #dbe0e4;white-space:nowrap}
 .data-table tbody tr{cursor:pointer}
 .data-table tbody tr:hover{background:#f3f5f7}
-.data-table tbody tr.settled-row,.data-table tbody tr.settled-row:hover{background:#d9dee2;color:#59636c}
+.data-table tbody tr.settled-row,.data-table tbody tr.settled-row:hover{background:#eceff1;color:#707980}
 .select-cell{width:58px;min-width:58px;text-align:center;cursor:pointer}
 .select-cell input[type="checkbox"]{display:block;width:22px;height:22px;margin:0 auto;cursor:pointer}
 .selected-total{font-size:1.1rem;font-weight:700}
@@ -62,7 +62,6 @@
 .search-form{padding:26px 18px}
 .summary-action-row{grid-template-columns:1fr}
 .selection-card .bulk-actions{flex-wrap:wrap}
-.settlement-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.settlement-actions button{width:100%;min-width:0;padding-right:.55rem;padding-left:.55rem}
 .selection-card .selected-total{width:100%;margin:0 0 4px}
 }
 @media(max-width:520px){.summary-header{align-items:flex-start;flex-direction:column;gap:8px}
@@ -80,9 +79,8 @@
 </div>
 <div class="manage-wrap">
 <div class="success" th:if="${param.settled}">選択データを精算済みにしました。</div>
-<div class="success" th:if="${param.unsettled}">選択データの精算済みを解除しました。</div>
 <div class="success" th:if="${param.deleted}">削除可能な選択データを削除しました。</div>
-<div class="alert" th:if="${invalidReferenceCount > 0}" th:text="${'無効または削除済みのメンバー・カテゴリー・支払い方法・ラベルを使用している未確定データが' + invalidReferenceCount + '件あります。対象行を開いて入力し直してください。'}"></div>
+<div class="alert" th:if="${invalidReferenceCount>0}" th:text="|無効または削除済みのメンバー・カテゴリー・支払い方法・ラベルを使用している未確定データが${invalidReferenceCount}件あります。対象行を開いて入力し直してください。|"></div>
 <div class="list-toolbar">
 <button type="button" id="open-search">検索条件を設定</button>
 </div>
@@ -151,7 +149,7 @@
 <section class="summary-card" aria-label="検索結果の合計">
 <h2 class="summary-title">検索結果の集計</h2>
 <div class="summary-header">
-<div><span class="summary-label">合計金額（支出 − 収入）</span><span class="summary-count" th:text="${'（' + #numbers.formatInteger(summary.count, 1, 'COMMA') + '件）'}">（0件）</span></div>
+<div><span class="summary-label">合計金額（支出 − 収入）</span><span class="summary-count" th:text="|（${#numbers.formatInteger(summary.count,1,'COMMA')}件）|">（0件）</span></div>
 <strong class="summary-value" th:classappend="${summary.total < 0} ? ' negative'" th:text="|${#numbers.formatInteger(summary.total,1,'COMMA')}円|">0円</strong>
 </div>
 <div class="payment-summary-list" th:if="${!summary.payments.isEmpty()}">
@@ -171,7 +169,7 @@
 <div class="payment-summary-list" id="selected-payment-list"></div>
 <div class="empty-summary" id="selected-empty" hidden></div>
 <div class="bulk-actions">
-<div class="settlement-actions"><button th:formaction="@{/group/purchases/settle}" onclick="return selected()">一括精算済み</button><button class="secondary" th:formaction="@{/group/purchases/unsettle}" onclick="return selected()">一括精算済み解除</button></div>
+<button th:formaction="@{/group/purchases/settle}" onclick="return selected()">一括精算済み</button>
 <button class="danger" th:formaction="@{/group/purchases/delete}" onclick="return selected()&&confirm('未精算の選択データを削除しますか？')">一括削除</button>
 </div>
 </section>
@@ -216,7 +214,7 @@
 </td>
 <td th:text="${r.remarks}">
 </td>
-<td class="locked" th:text="${r.fixed_flag == 1 ? '確定済' : (r.reference_warning == 1 ? '要修正' : '編集可')}">
+<td class="locked" th:text="${r.fixed_flag==1?'確定済':r.reference_warning==1?'要修正':'編集可'}">
 </td>
 </tr>
 </tbody>

@@ -74,8 +74,7 @@
 
         .form-actions {
             display: flex;
-            justify-content: flex-end;
-            margin-top: 18px
+            justify-content: flex-end
         }
 
         .amount-button {
@@ -189,7 +188,6 @@
                     </div>
                     <label class="full">ラベル<select class="check-select" name="labelIds" multiple
                                                                    data-select-threshold="1"
-                                                                   data-force-adaptive="true"
                                                                    data-search-placeholder="ラベルを検索・選択">
                     <option th:each="x:${labels}" th:value="${x.id}" th:text="${x.name}"></option>
                 </select></label>
@@ -198,8 +196,8 @@
                 <div class="form-actions">
                     <button type="submit">登録</button>
                 </div>
-            </section>
-        </form>
+            </form>
+        </section>
         <section class="panel history-panel">
             <h2>入力履歴</h2>
             <p class="history-empty" th:if="${#lists.isEmpty(recentPurchases)}">購入データの入力履歴はありません。</p>
