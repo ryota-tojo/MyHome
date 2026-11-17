@@ -331,12 +331,59 @@ td a {
 
 .pagination {
     margin: 28px 0;
-    gap: 12px
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap
 }
 
-.pagination span {
-    padding: 8px 12px;
-    color: var(--muted)
+.pagination a,
+.pagination .page-control,
+.pagination .page-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    min-height: 40px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    padding: 7px 12px;
+    border: 1px solid #ccd7e2;
+    border-radius: 8px;
+    background: #fff;
+    color: #34404b;
+    text-decoration: none;
+    line-height: 1
+}
+
+.pagination a:hover {
+    border-color: #9fc9e8;
+    background: #eaf6ff;
+    color: #26313c
+}
+
+.pagination .page-number.is-current {
+    border-color: #1671e8;
+    background: #1671e8;
+    color: #fff;
+    font-weight: 700
+}
+
+.pagination .page-control.is-disabled {
+    border-color: #e0e4e8;
+    background: #f1f3f5;
+    color: #9aa2a9
+}
+
+@media(max-width:700px) {
+    .pagination { gap: 6px; padding: 0 2px }
+    .pagination a,
+    .pagination .page-control,
+    .pagination .page-number { min-width: 36px; min-height: 38px; padding: 6px 9px; font-size: .88rem }
 }
 
 details.panel {

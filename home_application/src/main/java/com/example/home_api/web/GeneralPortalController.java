@@ -16,8 +16,10 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Controller
 public class GeneralPortalController {
@@ -143,6 +145,7 @@ public class GeneralPortalController {
     String approve(@PathVariable String user, HttpSession session) {
         String group = leaderGroup(session);
         jdbc.update("UPDATE group_member SET approve_flag=1,approve_date=CURRENT_TIMESTAMP,removed_at=NULL,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND user_id=?", group, user);
+        refreshPatternReferences(group);
         return "redirect:/group/members";
     }
 
@@ -153,7 +156,7 @@ public class GeneralPortalController {
         if (leader != null && leader == 1 && jdbc.queryForObject("SELECT count(*) FROM group_member WHERE group_id=? AND leader_flag=1 AND approve_flag=1", Integer.class, group) <= 1)
             return "redirect:/group/members?error=lastLeader";
         jdbc.update("UPDATE group_member SET approve_flag=0,leader_flag=0,removed_at=CURRENT_TIMESTAMP,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND user_id=?", group, user);
-        jdbc.update("UPDATE purchase_pattern SET disabled_flag=1,auto_disabled=1,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND ?=ANY(string_to_array(member_ids,','))", group, user);
+        refreshPatternReferences(group);
         return "redirect:/group/members";
     }
 
@@ -253,6 +256,17 @@ public class GeneralPortalController {
             throw new IllegalStateException("リーダー権限が必要です");
         return group.toString();
     }
+    private void refreshPatternReferences(String group){
+        Set<String> categories=new HashSet<>(jdbc.queryForList("SELECT id FROM category WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",String.class,group));
+        Set<String> payments=new HashSet<>(jdbc.queryForList("SELECT id FROM payment_method WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",String.class,group));
+        Set<String> labels=new HashSet<>(jdbc.queryForList("SELECT id FROM shopping_label WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",String.class,group));
+        Set<String> members=new HashSet<>(jdbc.queryForList("SELECT user_id FROM group_member WHERE group_id=? AND approve_flag=1 AND removed_at IS NULL",String.class,group));
+        for(Map<String,Object> row:jdbc.queryForList("SELECT id,category_ids,payment_method_ids,label_ids,member_ids FROM purchase_pattern WHERE group_id=?",group)){
+            boolean invalid=!contained(row.get("category_ids"),categories)||!contained(row.get("payment_method_ids"),payments)||!contained(row.get("label_ids"),labels)||!contained(row.get("member_ids"),members);
+            jdbc.update("UPDATE purchase_pattern SET auto_disabled=?,update_date=CURRENT_TIMESTAMP WHERE id=?",invalid?1:0,row.get("id"));
+        }
+    }
+    private boolean contained(Object csv,Set<String> active){if(csv==null||String.valueOf(csv).isBlank())return true;return Arrays.stream(String.valueOf(csv).split(",")).allMatch(active::contains);}
 
     private String groupSetting(String group, String key) {
         return jdbc.query("SELECT value FROM group_setting WHERE group_id=? AND key=?", rs -> rs.next() ? rs.getString(1) : "", group, key);

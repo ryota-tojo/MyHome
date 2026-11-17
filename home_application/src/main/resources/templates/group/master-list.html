@@ -5,6 +5,7 @@
   <title th:text="${title}"></title>
   <link rel="stylesheet" th:href="@{/css/app.css}"><link rel="stylesheet" th:href="@{/theme.css}">
   <link rel="stylesheet" th:href="@{/css/polish.css}"><link rel="stylesheet" th:href="@{/css/actions.css}"><link rel="stylesheet" th:href="@{/css/management-components.css}">
+  <script th:src="@{/js/management-live-filter.js}" defer></script>
   <style>.lane-color-swatch{display:inline-block;width:26px;height:26px;flex:0 0 26px;border:1px solid #cbd3da;border-radius:7px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}.confirm-dialog .lane-color-field{display:grid!important;grid-template-columns:70px 106px!important;align-items:center!important;justify-content:start;gap:12px}.lane-color-field>span{display:flex;align-items:center;height:46px;line-height:1;margin:0}.confirm-dialog .lane-color-field input[type=color]{display:block!important;width:106px!important;height:58px!important;margin:0!important;padding:9px!important;cursor:pointer}@media(max-width:700px){.sortable-item.lane-item>.drag-handle{align-self:center;padding:0;height:36px}.sortable-item.lane-item>.lane-color-swatch{align-self:center}.sortable-item.lane-item>.name{align-self:center;padding-top:0;padding-bottom:0}}</style>
 </head>
 <body>
@@ -17,9 +18,18 @@
   <div class="success management-message" th:if="${param.sorted}">表示順を更新しました。</div>
 <div class="alert management-message" th:if="${param.error != null}" th:text="${param.error[0] == 'last' ? '最低1件の有効な項目が必要です。' : (param.error[0] == 'duplicate' ? '同じ表示名は登録できません。' : (param.error[0] == 'inUse' ? (type == 'kanban-lanes' ? 'タスクが紐づいているレーンは無効化・削除できません。' : '購入データなどから参照されているため削除できません。') : (param.error[0] == 'disableFirst' ? '削除する前に無効化してください。' : '入力内容を確認してください。')))}"></div>
   <section class="panel management-panel">
-    <div class="master-toolbar"><p class="master-note">左のハンドルをドラッグして表示順を変更できます。</p><div class="master-toolbar__actions"><button type="button" class="secondary auto-sort-open">自動並び替え</button><button type="button" class="add-button" id="create-open" aria-label="新規登録">＋</button></div></div>
+    <div class="master-toolbar">
+      <div class="management-list-controls">
+        <label class="management-list-search" th:if="${type != 'kanban-lanes'}">
+          <span class="sr-only">表示名を検索</span>
+          <input type="search" placeholder="表示名を検索" autocomplete="off" data-live-filter="#sortable" aria-label="表示名を検索">
+        </label>
+        <div class="master-toolbar__actions"><button type="button" class="secondary auto-sort-open">自動並び替え</button><button type="button" class="add-button" id="create-open" aria-label="新規登録">＋</button></div>
+      </div>
+      <p class="master-note">左のハンドルをドラッグして表示順を変更できます。</p>
+    </div>
     <ul id="sortable" class="sortable-list" data-touch-sortable th:attr="data-order-url=@{/group/masters/{type}/order(type=${type})}">
-      <li class="sortable-item" th:each="item:${items}" th:classappend="${(item.disabled_flag==1?' disabled':'') + (type=='kanban-lanes'?' lane-item':'')}" th:attr="data-id=${item.id}" draggable="true">
+      <li class="sortable-item" th:each="item:${items}" th:classappend="${(item.disabled_flag==1?' disabled':'') + (type=='kanban-lanes'?' lane-item':'')}" th:attr="data-id=${item.id},data-filter-text=${item.name}" data-filter-item draggable="true">
         <span class="drag-handle" aria-label="並び替え">☰</span>
         <span class="lane-color-swatch" th:if="${type=='kanban-lanes'}" th:style="|background:${item.color}|" th:title="${item.color}"></span>
         <span class="name" th:text="${item.name}"></span>
@@ -33,6 +43,7 @@
         </div>
       </li>
     </ul>
+    <p class="management-filter-empty" data-filter-empty="#sortable" hidden>検索条件に一致するデータはありません。</p>
     <p th:if="${#lists.isEmpty(items)}">まだ登録されていません。</p>
   </section>
 </main>
