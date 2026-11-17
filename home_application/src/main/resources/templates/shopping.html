@@ -27,6 +27,11 @@
             color: #28323c
         }
 
+        .pattern-reset {
+            margin-left: auto;
+            white-space: nowrap
+        }
+
         .entry-form {
             display: grid;
             gap: 16px
@@ -166,7 +171,8 @@
             <div class="pattern-bar">
                 <button type="button" class="pattern-button" th:each="p:${patterns}" th:text="${p.display_name}"
                         th:attr="data-category=${p.category_ids},data-type=${p.transaction_type},data-payment=${p.payment_method_ids},data-amount=${p.amount},data-member=${p.member_ids},data-settlement=${p.settlement_status},data-labels=${p.label_ids},data-note=${p.note}"></button>
-                <span th:if="${#lists.isEmpty(patterns)}">登録済みの入力パターンはありません。</span></div>
+                <span th:if="${#lists.isEmpty(patterns)}">登録済みの入力パターンはありません。</span>
+                <button type="button" class="secondary pattern-reset" id="pattern-reset" th:disabled="${#lists.isEmpty(patterns)}">パターンをリセット</button></div>
         </section>
             <form id="entry-form" class="entry-form" method="post" th:action="@{/shopping}">
                 <input type="hidden" name="ignoreSimilar" id="ignore-similar" value="false">
@@ -207,7 +213,7 @@
             <div class="history-scroll" th:if="${!#lists.isEmpty(recentPurchases)}">
                 <table class="history-table">
                     <thead><tr><th>入力日時</th><th>購入日</th><th>購入者</th><th>カテゴリー</th><th>種別</th><th>支払い方法</th><th>金額</th><th>精算</th><th>状態</th></tr></thead>
-                    <tbody><tr th:each="r:${recentPurchases}" th:classappend="${r.settlement==2}?' settled':''" th:attr="data-url=@{|/group/purchases/${r.id}|}">
+                    <tbody><tr th:each="r:${recentPurchases}" th:classappend="${r.reference_warning == 1 ? ' reference-warning-row' : (r.settlement == 2 ? ' settled' : '')}" th:attr="data-url=@{|/group/purchases/${r.id}|}">
                         <td th:text="${#dates.format(r.create_date,'yyyy/MM/dd HH:mm:ss')}"></td>
                         <td><a th:href="@{|/group/purchases/${r.id}|}" th:text="${#dates.format(r.shopping_date,'yyyy/MM/dd')}"></a></td>
                         <td th:text="${r.user_name?:'-'}"></td><td th:text="${r.category_name?:'-'}"></td><td th:text="${r.type==2?'収入':'支出'}"></td><td th:text="${r.payment_name?:'-'}"></td>
@@ -295,6 +301,16 @@
             select.value = next;
             select.dispatchEvent(new Event('change', {bubbles: true}))
         };
+        const initialPatternValues = {
+            category: form.categoryId.value,
+            type: form.type.value,
+            payment: form.paymentMethodId.value,
+            amount: hidden.value,
+            member: form.memberId.value,
+            settlement: form.settlement.value,
+            labels: [...form.labelIds.options].filter(option => option.selected).map(option => option.value),
+            note: form.remarks.value
+        };
         document.querySelectorAll('.pattern-button').forEach(b => b.onclick = () => {
             value(form.categoryId, b.dataset.category);
             value(form.type, b.dataset.type);
@@ -304,6 +320,19 @@
             value(form.settlement, b.dataset.settlement);
             values(form.labelIds, b.dataset.labels);
             if (b.dataset.note) form.remarks.value = b.dataset.note
+        });
+        document.getElementById('pattern-reset').addEventListener('click', () => {
+            form.categoryId.value = initialPatternValues.category;
+            form.type.value = initialPatternValues.type;
+            form.paymentMethodId.value = initialPatternValues.payment;
+            form.memberId.value = initialPatternValues.member;
+            form.settlement.value = initialPatternValues.settlement;
+            [form.categoryId, form.type, form.paymentMethodId, form.memberId, form.settlement]
+                .forEach(select => select.dispatchEvent(new Event('change', {bubbles: true})));
+            [...form.labelIds.options].forEach(option => option.selected = initialPatternValues.labels.includes(option.value));
+            form.labelIds.dispatchEvent(new Event('change', {bubbles: true}));
+            setAmount(initialPatternValues.amount);
+            form.remarks.value = initialPatternValues.note
         });
         document.querySelectorAll('.history-table tbody tr').forEach(row=>row.addEventListener('click',event=>{if(!event.target.closest('a,button,input'))location.href=row.dataset.url}));
     })();

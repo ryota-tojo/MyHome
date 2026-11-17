@@ -35,7 +35,8 @@ public class GroupMasterController {
         if("kanban-lanes".equals(type))ensureDefaultLanes(group);
         model.addAttribute("type",type); model.addAttribute("title",d.title()); model.addAttribute("requiredMaster",d.required());
         String colorColumn="kanban-lanes".equals(type)?",lane_color AS color":",NULL::varchar AS color";
-        model.addAttribute("items",jdbc.queryForList("SELECT id,"+d.nameCol()+" AS name,"+d.orderCol()+" AS sort_no,disabled_flag"+colorColumn+" FROM "+d.table()+" WHERE group_id=? ORDER BY "+d.orderCol()+",create_date",group));
+        String deletedFilter="kanban-lanes".equals(type)?"":" AND deleted_flag=0";
+        model.addAttribute("items",jdbc.queryForList("SELECT id,"+d.nameCol()+" AS name,"+d.orderCol()+" AS sort_no,disabled_flag"+colorColumn+" FROM "+d.table()+" WHERE group_id=?"+deletedFilter+" ORDER BY "+d.orderCol()+",create_date",group));
         return "group/master-list";
     }
 
@@ -69,7 +70,7 @@ public class GroupMasterController {
             if(used!=null&&used>0)return "redirect:/group/masters/"+type+"?error=inUse";
         }
         jdbc.update("UPDATE "+d.table()+" SET disabled_flag=?,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND id=?",disabled==0?1:0,group,id);
-        if(disabled==0&&!"kanban-lanes".equals(type)){String column=type.equals("categories")?"category_ids":type.equals("payments")?"payment_method_ids":"label_ids";jdbc.update("UPDATE purchase_pattern SET disabled_flag=1,auto_disabled=1,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND ?=ANY(string_to_array("+column+",','))",group,id);}
+        if(!"kanban-lanes".equals(type))refreshPatternReferences(group);
         return "redirect:/group/masters/"+type;
     }
 
@@ -91,13 +92,11 @@ public class GroupMasterController {
         if(rows.isEmpty()) return "redirect:/group/masters/"+type;
         int disabled=((Number)rows.get(0).get("disabled_flag")).intValue();
         if(disabled!=1)return "redirect:/group/masters/"+type+"?error=disableFirst";
-        if("payments".equals(type)){Integer used=jdbc.queryForObject("SELECT count(*) FROM shopping WHERE group_id=? AND payment_method_id=?",Integer.class,group,id);if(used!=null&&used>0)return "redirect:/group/masters/"+type+"?error=inUse";}
-        if("labels".equals(type)){Integer used=jdbc.queryForObject("SELECT count(*) FROM shopping WHERE group_id=? AND ?=ANY(string_to_array(COALESCE(shopping_label_ids,''),','))",Integer.class,group,id);if(used!=null&&used>0)return "redirect:/group/masters/"+type+"?error=inUse";}
-        if(d.required()&&disabled==0){Integer active=jdbc.queryForObject("SELECT count(*) FROM "+d.table()+" WHERE group_id=? AND disabled_flag=0",Integer.class,group);if(active!=null&&active<=1)return "redirect:/group/masters/"+type+"?error=last";}
-        try{jdbc.update("DELETE FROM "+d.table()+" WHERE group_id=? AND id=?",group,id);}catch(org.springframework.dao.DataAccessException ex){return "redirect:/group/masters/"+type+"?error=inUse";}
-        if(!"kanban-lanes".equals(type)){
-            String column=type.equals("categories")?"category_ids":type.equals("payments")?"payment_method_ids":"label_ids";
-            jdbc.update("UPDATE purchase_pattern SET disabled_flag=1,auto_disabled=1,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND ?=ANY(string_to_array("+column+",','))",group,id);
+        if("kanban-lanes".equals(type)){
+            try{jdbc.update("DELETE FROM kanban_lane WHERE group_id=? AND id=?",group,id);}catch(org.springframework.dao.DataAccessException ex){return "redirect:/group/masters/"+type+"?error=inUse";}
+        }else{
+            jdbc.update("UPDATE "+d.table()+" SET disabled_flag=1,deleted_flag=1,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND id=?",group,id);
+            refreshPatternReferences(group);
         }
         return "redirect:/group/masters/"+type+"?deleted";
     }
@@ -134,5 +133,16 @@ public class GroupMasterController {
     private String groupForType(HttpSession session,String type){Object group=session.getAttribute("activeGroupId");if(group==null)throw new IllegalStateException("所属グループを選択してください");if(!"labels".equals(type)&&!Boolean.TRUE.equals(session.getAttribute("activeGroupLeader")))throw new IllegalStateException("リーダー権限が必要です");return group.toString();}
     private void ensureDefaultLanes(String group){Integer count=jdbc.queryForObject("SELECT count(*) FROM kanban_lane WHERE group_id=?",Integer.class,group);if(count!=null&&count>0)return;int no=1;for(String name:List.of("未着手","進行中","完了"))jdbc.update("INSERT INTO kanban_lane(id,group_id,lane_no,lane_name) VALUES (?,?,?,?)","lane-"+UUID.randomUUID().toString().substring(0,12),group,no++,name);}
     private boolean validColor(String color){return color!=null&&color.matches("#[0-9A-Fa-f]{6}");}
+    private void refreshPatternReferences(String group){
+        Set<String> categories=new HashSet<>(jdbc.queryForList("SELECT id FROM category WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",String.class,group));
+        Set<String> payments=new HashSet<>(jdbc.queryForList("SELECT id FROM payment_method WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",String.class,group));
+        Set<String> labels=new HashSet<>(jdbc.queryForList("SELECT id FROM shopping_label WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",String.class,group));
+        Set<String> members=new HashSet<>(jdbc.queryForList("SELECT user_id FROM group_member WHERE group_id=? AND approve_flag=1 AND removed_at IS NULL",String.class,group));
+        for(Map<String,Object> row:jdbc.queryForList("SELECT id,category_ids,payment_method_ids,label_ids,member_ids FROM purchase_pattern WHERE group_id=?",group)){
+            boolean invalid=!contained(row.get("category_ids"),categories)||!contained(row.get("payment_method_ids"),payments)||!contained(row.get("label_ids"),labels)||!contained(row.get("member_ids"),members);
+            jdbc.update("UPDATE purchase_pattern SET auto_disabled=?,update_date=CURRENT_TIMESTAMP WHERE id=?",invalid?1:0,row.get("id"));
+        }
+    }
+    private boolean contained(Object csv,Set<String> active){if(csv==null||String.valueOf(csv).isBlank())return true;return Arrays.stream(String.valueOf(csv).split(",")).allMatch(active::contains);}
     private String formError(String type,String error,String name,String id,String color,RedirectAttributes redirect){redirect.addAttribute("error",error);redirect.addFlashAttribute("formName",name);redirect.addFlashAttribute("formColor",color);redirect.addFlashAttribute("formMode",id==null?"create":"edit");if(id!=null)redirect.addFlashAttribute("formId",id);return "redirect:/group/masters/"+type;}
 }

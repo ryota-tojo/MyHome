@@ -87,8 +87,11 @@ document.addEventListener('DOMContentLoaded',()=>{
       list.classList.toggle('empty',visible===0);
     };
     const open=()=>{
+      const alreadyOpen=combo.classList.contains('open');
       combo.classList.add('open');input.setAttribute('aria-expanded','true');
-      if(input.value){input.select();filter('');}
+      // inputイベントのたびに文字列全体を選択すると、半角入力では次の1文字が
+      // 直前の文字を上書きしてしまう。初めて開いた時だけ既存表示を選択する。
+      if(!alreadyOpen&&input.value)input.select();
     };
     const close=()=>{combo.classList.remove('open');input.setAttribute('aria-expanded','false');filter('');summary();};
     input.addEventListener('focus',open);
