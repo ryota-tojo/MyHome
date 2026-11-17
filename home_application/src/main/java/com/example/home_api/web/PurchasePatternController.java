@@ -9,7 +9,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.LocalDate;
 import java.util.*;
 
 @Controller
@@ -29,7 +28,9 @@ public class PurchasePatternController {
     String list(@PathVariable String type,HttpSession session,Model model){
         String group=activeGroup(session);Def d=def(type);disableInvalid(group,d.code());
         model.addAttribute("type",type);model.addAttribute("patternCode",d.code());model.addAttribute("title",d.title());model.addAttribute("description",d.description());model.addAttribute("searchPattern",d.search());
-        model.addAttribute("items",jdbc.queryForList("SELECT p.*,(SELECT string_agg(c.category_name,'、' ORDER BY c.category_no) FROM category c WHERE c.id=ANY(string_to_array(COALESCE(p.category_ids,''),','))) AS category_names,(SELECT string_agg(pm.payment_name,'、' ORDER BY pm.payment_no) FROM payment_method pm WHERE pm.id=ANY(string_to_array(COALESCE(p.payment_method_ids,''),','))) AS payment_names,(SELECT string_agg(sl.label_name,'、' ORDER BY sl.label_no) FROM shopping_label sl WHERE sl.id=ANY(string_to_array(COALESCE(p.label_ids,''),','))) AS label_names,(SELECT string_agg(u.user_name,'、' ORDER BY gm.member_no,u.user_name) FROM group_member gm JOIN \"user\" u ON u.user_id=gm.user_id WHERE gm.group_id=p.group_id AND u.user_id=ANY(string_to_array(COALESCE(p.member_ids,''),','))) AS member_names FROM purchase_pattern p WHERE p.group_id=? AND p.pattern_type=? ORDER BY p.display_no,p.create_date",group,d.code()));
+        List<Map<String,Object>> items=jdbc.queryForList("SELECT p.*,(SELECT string_agg(c.category_name,'、' ORDER BY c.category_no) FROM category c WHERE c.id=ANY(string_to_array(COALESCE(p.category_ids,''),','))) AS category_names,(SELECT string_agg(pm.payment_name,'、' ORDER BY pm.payment_no) FROM payment_method pm WHERE pm.id=ANY(string_to_array(COALESCE(p.payment_method_ids,''),','))) AS payment_names,(SELECT string_agg(sl.label_name,'、' ORDER BY sl.label_no) FROM shopping_label sl WHERE sl.id=ANY(string_to_array(COALESCE(p.label_ids,''),','))) AS label_names,(SELECT string_agg(u.user_name,'、' ORDER BY gm.member_no,u.user_name) FROM group_member gm JOIN \"user\" u ON u.user_id=gm.user_id WHERE gm.group_id=p.group_id AND u.user_id=ANY(string_to_array(COALESCE(p.member_ids,''),','))) AS member_names FROM purchase_pattern p WHERE p.group_id=? AND p.pattern_type=? ORDER BY p.display_no,p.create_date",group,d.code());
+        items.forEach(item->item.put("reference_errors",referenceErrors(group,item)));
+        model.addAttribute("items",items);
         model.addAttribute("categories",jdbc.queryForList("SELECT id,category_name AS name FROM category WHERE group_id=? AND disabled_flag=0 ORDER BY category_no",group));
         model.addAttribute("payments",jdbc.queryForList("SELECT id,payment_name AS name FROM payment_method WHERE group_id=? AND disabled_flag=0 ORDER BY payment_no",group));
         model.addAttribute("labels",jdbc.queryForList("SELECT id,label_name AS name FROM shopping_label WHERE group_id=? AND disabled_flag=0 ORDER BY label_no",group));
@@ -40,19 +41,19 @@ public class PurchasePatternController {
     @PostMapping("/{type}") @Transactional
     String create(@PathVariable String type,@RequestParam MultiValueMap<String,String> p,HttpSession session,RedirectAttributes redirect){
         String group=activeGroup(session);Def d=def(type);String name=value(p,"displayName").strip();
-        if(!validName(name)||invalidAmountRange(p))return formError(type,"input",p,null,redirect);if(duplicate(group,d.code(),name,null))return formError(type,"duplicate",p,null,redirect);
+        if(!validName(name)||invalidAmountRange(p)||invalidTemplate(d,p))return formError(type,"input",p,null,redirect);if(duplicate(group,d.code(),name,null))return formError(type,"duplicate",p,null,redirect);
         Integer no=jdbc.queryForObject("SELECT COALESCE(MAX(display_no),0)+1 FROM purchase_pattern WHERE group_id=? AND pattern_type=?",Integer.class,group,d.code());
         jdbc.update("INSERT INTO purchase_pattern(id,group_id,pattern_type,display_no,display_name,category_ids,payment_method_ids,member_ids,label_ids,transaction_type,amount,settlement_status,date_from,date_to,note,amount_from,amount_to) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            "pat-"+UUID.randomUUID().toString().substring(0,12),group,d.code(),no,name,csv(p,"categoryIds"),csv(p,"paymentIds"),csv(p,"memberIds"),csv(p,"labelIds"),emptyNull(value(p,"transactionType")),longValue(value(p,"amount")),emptyNull(value(p,"settlementStatus")),date(value(p,"dateFrom")),date(value(p,"dateTo")),emptyNull(value(p,"note")),longValue(value(p,"amountFrom")),longValue(value(p,"amountTo")));
+            "pat-"+UUID.randomUUID().toString().substring(0,12),group,d.code(),no,name,csv(p,"categoryIds"),csv(p,"paymentIds"),csv(p,"memberIds"),csv(p,"labelIds"),emptyNull(value(p,"transactionType")),longValue(value(p,"amount")),emptyNull(value(p,"settlementStatus")),null,null,emptyNull(value(p,"note")),longValue(value(p,"amountFrom")),longValue(value(p,"amountTo")));
         return "redirect:/group/patterns/"+type+"?created";
     }
 
     @PostMapping("/{type}/{id}/update") @Transactional
     String update(@PathVariable String type,@PathVariable String id,@RequestParam MultiValueMap<String,String> p,HttpSession session,RedirectAttributes redirect){
         String group=activeGroup(session);Def d=def(type);String name=value(p,"displayName").strip();
-        if(!validName(name)||invalidAmountRange(p))return formError(type,"input",p,id,redirect);if(duplicate(group,d.code(),name,id))return formError(type,"duplicate",p,id,redirect);
+        if(!validName(name)||invalidAmountRange(p)||invalidTemplate(d,p))return formError(type,"input",p,id,redirect);if(duplicate(group,d.code(),name,id))return formError(type,"duplicate",p,id,redirect);
         jdbc.update("UPDATE purchase_pattern SET display_name=?,category_ids=?,payment_method_ids=?,member_ids=?,label_ids=?,transaction_type=?,amount=?,settlement_status=?,date_from=?,date_to=?,note=?,amount_from=?,amount_to=?,auto_disabled=0,update_date=CURRENT_TIMESTAMP WHERE id=? AND group_id=? AND pattern_type=?",
-            name,csv(p,"categoryIds"),csv(p,"paymentIds"),csv(p,"memberIds"),csv(p,"labelIds"),emptyNull(value(p,"transactionType")),longValue(value(p,"amount")),emptyNull(value(p,"settlementStatus")),date(value(p,"dateFrom")),date(value(p,"dateTo")),emptyNull(value(p,"note")),longValue(value(p,"amountFrom")),longValue(value(p,"amountTo")),id,group,d.code());
+            name,csv(p,"categoryIds"),csv(p,"paymentIds"),csv(p,"memberIds"),csv(p,"labelIds"),emptyNull(value(p,"transactionType")),longValue(value(p,"amount")),emptyNull(value(p,"settlementStatus")),null,null,emptyNull(value(p,"note")),longValue(value(p,"amountFrom")),longValue(value(p,"amountTo")),id,group,d.code());
         disableInvalid(group,d.code());return "redirect:/group/patterns/"+type+"?updated";
     }
 
@@ -76,12 +77,28 @@ public class PurchasePatternController {
     }
 
     private void disableInvalid(String group,String code){
-        Set<String> cats=set("SELECT id FROM category WHERE group_id=? AND disabled_flag=0",group),pays=set("SELECT id FROM payment_method WHERE group_id=? AND disabled_flag=0",group),labels=set("SELECT id FROM shopping_label WHERE group_id=? AND disabled_flag=0",group),members=set("SELECT user_id FROM group_member WHERE group_id=? AND approve_flag=1",group);
+        Set<String> cats=set("SELECT id FROM category WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",group),pays=set("SELECT id FROM payment_method WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",group),labels=set("SELECT id FROM shopping_label WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",group),members=set("SELECT user_id FROM group_member WHERE group_id=? AND approve_flag=1 AND removed_at IS NULL",group);
         for(Map<String,Object> row:jdbc.queryForList("SELECT id,category_ids,payment_method_ids,label_ids,member_ids FROM purchase_pattern WHERE group_id=? AND pattern_type=?",group,code)){
             boolean invalid=!contained(row.get("category_ids"),cats)||!contained(row.get("payment_method_ids"),pays)||!contained(row.get("label_ids"),labels)||!contained(row.get("member_ids"),members);
-            if(invalid)jdbc.update("UPDATE purchase_pattern SET disabled_flag=1,auto_disabled=1,update_date=CURRENT_TIMESTAMP WHERE id=?",row.get("id"));
+            jdbc.update("UPDATE purchase_pattern SET auto_disabled=?,update_date=CURRENT_TIMESTAMP WHERE id=?",invalid?1:0,row.get("id"));
         }
     }
+    private List<String> referenceErrors(String group,Map<String,Object> row){
+        List<String> errors=new ArrayList<>();
+        masterErrors(errors,group,row.get("category_ids"),"カテゴリー","category","category_name");
+        masterErrors(errors,group,row.get("payment_method_ids"),"支払い方法","payment_method","payment_name");
+        masterErrors(errors,group,row.get("label_ids"),"ラベル","shopping_label","label_name");
+        if(row.get("member_ids")!=null&&!String.valueOf(row.get("member_ids")).isBlank())for(String id:String.valueOf(row.get("member_ids")).split(",")){
+            var found=jdbc.queryForList("SELECT u.user_name,gm.approve_flag,gm.removed_at,u.delete_flag FROM group_member gm JOIN \"user\" u ON u.user_id=gm.user_id WHERE gm.group_id=? AND gm.user_id=?",group,id);
+            if(found.isEmpty())errors.add("メンバーID「"+id+"」は削除済みです");else{Map<String,Object>x=found.get(0);if(number(x.get("approve_flag"))!=1||x.get("removed_at")!=null||number(x.get("delete_flag"))!=0)errors.add("メンバー「"+x.get("user_name")+"」は所属解除または無効です");}
+        }
+        return errors;
+    }
+    private void masterErrors(List<String> errors,String group,Object csv,String label,String table,String nameColumn){
+        if(csv==null||String.valueOf(csv).isBlank())return;
+        for(String id:String.valueOf(csv).split(",")){var found=jdbc.queryForList("SELECT "+nameColumn+" name,disabled_flag,deleted_flag FROM "+table+" WHERE group_id=? AND id=?",group,id);if(found.isEmpty())errors.add(label+"ID「"+id+"」は削除済みです");else{Map<String,Object>x=found.get(0);if(number(x.get("deleted_flag"))==1)errors.add(label+"「"+x.get("name")+"」は削除済みです");else if(number(x.get("disabled_flag"))==1)errors.add(label+"「"+x.get("name")+"」は無効です");}}
+    }
+    private int number(Object value){return value instanceof Number n?n.intValue():0;}
     private Set<String> set(String sql,String group){return new HashSet<>(jdbc.queryForList(sql,String.class,group));}
     private boolean contained(Object csv,Set<String> active){if(csv==null||String.valueOf(csv).isBlank())return true;return Arrays.stream(String.valueOf(csv).split(",")).allMatch(active::contains);}
     private boolean duplicate(String group,String code,String name,String id){Integer n=id==null?jdbc.queryForObject("SELECT count(*) FROM purchase_pattern WHERE group_id=? AND pattern_type=? AND lower(display_name)=lower(?)",Integer.class,group,code,name):jdbc.queryForObject("SELECT count(*) FROM purchase_pattern WHERE group_id=? AND pattern_type=? AND lower(display_name)=lower(?) AND id<>?",Integer.class,group,code,name,id);return n!=null&&n>0;}
@@ -91,7 +108,12 @@ public class PurchasePatternController {
     private Object emptyNull(String s){return s==null||s.isBlank()?null:s;}
     private Long longValue(String s){try{return s==null||s.isBlank()?null:Long.parseLong(s);}catch(Exception e){return null;}}
     private boolean invalidAmountRange(MultiValueMap<String,String> p){Long from=longValue(value(p,"amountFrom")),to=longValue(value(p,"amountTo"));return (from!=null&&from<0)||(to!=null&&to<0)||(from!=null&&to!=null&&from>to);}
-    private LocalDate date(String s){try{return s==null||s.isBlank()?null:LocalDate.parse(s);}catch(Exception e){return null;}}
+    private boolean invalidTemplate(Def d,MultiValueMap<String,String> p){
+        if(!"TEMPLATE".equals(d.code()))return false;
+        Long amount=longValue(value(p,"amount"));
+        return csv(p,"memberIds").isBlank()||csv(p,"categoryIds").isBlank()||csv(p,"paymentIds").isBlank()
+            ||value(p,"transactionType").isBlank()||value(p,"settlementStatus").isBlank()||amount==null||amount<=0;
+    }
     private String redirect(String type,String error){return "redirect:/group/patterns/"+type+"?error="+error;}
     private String formError(String type,String error,MultiValueMap<String,String> values,String id,RedirectAttributes redirect){redirect.addAttribute("error",error);redirect.addFlashAttribute("patternForm",new LinkedHashMap<>(values));redirect.addFlashAttribute("patternFormId",id);return "redirect:/group/patterns/"+type;}
     private String activeGroup(HttpSession session){Object group=session.getAttribute("activeGroupId");if(group==null)throw new IllegalStateException("所属グループを選択してください");return group.toString();}

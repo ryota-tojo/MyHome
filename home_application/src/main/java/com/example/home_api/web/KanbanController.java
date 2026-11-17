@@ -49,6 +49,13 @@ public class KanbanController {
         return "redirect:/group/kanban?updated";
     }
 
+    @PostMapping("/{id}/status") @ResponseBody @Transactional
+    Map<String,Object> updateStatus(@PathVariable String id,@RequestParam String status,HttpSession session){
+        String group=activeGroup(session);if(!laneExists(group,status,false))throw new IllegalArgumentException("不正なレーンです");
+        lockGroup(group);int updated=jdbc.update("UPDATE kanban_card SET status=?,update_date=CURRENT_TIMESTAMP WHERE id=? AND group_id=?",status,id,group);normalize(group);
+        return Map.of("ok",updated==1);
+    }
+
     @PostMapping("/{id}/delete") @Transactional
     String delete(@PathVariable String id,HttpSession session){
         String group=activeGroup(session);lockGroup(group);jdbc.update("DELETE FROM kanban_card WHERE id=? AND group_id=?",id,group);normalize(group);

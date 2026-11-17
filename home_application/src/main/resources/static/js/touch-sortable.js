@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     let item=null,timer=null,active=false,startX=0,startY=0,pointerId=null,touchId=null;
     const cancelTimer=()=>{if(timer){clearTimeout(timer);timer=null}};
     const begin=(target,x,y)=>{
+      if(list.dataset.filterActive==='true')return false;
       item=target.closest('[data-id]');
       if(!item)return false;
       startX=x;startY=y;
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     };
 
     list.addEventListener('touchstart',event=>{
+      if(list.dataset.filterActive==='true')return;
       const handle=event.target.closest('.drag-handle');
       if(!handle||event.touches.length!==1)return;
       event.preventDefault();const touch=event.touches[0];touchId=touch.identifier;
@@ -56,6 +58,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
     /* Touch Eventsと二重に動かないようPointer Eventsはペン入力だけ扱う。 */
     list.addEventListener('pointerdown',event=>{
+      if(list.dataset.filterActive==='true')return;
       const handle=event.target.closest('.drag-handle');
       if(!handle||event.pointerType!=='pen')return;
       event.preventDefault();pointerId=event.pointerId;

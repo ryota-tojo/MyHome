@@ -98,7 +98,7 @@ public class PurchaseCsvController {
     @PostMapping("/communications/import") @Transactional
     String importCommunications(@RequestParam("file")MultipartFile file,HttpSession session){
         String group=group(session);List<CommunicationRow> rows;
-        try{rows=parseCommunications(file);}catch(IllegalArgumentException|IOException ex){failed(session,ex);return "redirect:/group/purchases/csv?type=communications";}
+        try{rows=parseCommunications(file,group);}catch(IllegalArgumentException|IOException ex){failed(session,ex);return "redirect:/group/purchases/csv?type=communications";}
         for(CommunicationRow row:rows)jdbc.update("INSERT INTO communication(group_id,receive_date,receive_from,receive_to,receive_item,receive_amount,receive_remarks,return_date,return_item,return_amount,return_remarks,return_flag,create_date,update_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",group,Timestamp.valueOf(row.receiveDate().atStartOfDay()),row.from(),row.to(),row.item(),String.valueOf(row.amount()),row.remarks(),row.returnDate()==null?null:Timestamp.valueOf(row.returnDate().atStartOfDay()),row.returnItem(),row.returnAmount()==null?null:String.valueOf(row.returnAmount()),row.returnRemarks(),row.returnFlag());
         imported(session,"お付き合い帳",rows.size());return "redirect:/group/purchases/csv?type=communications";
     }
@@ -113,7 +113,6 @@ public class PurchaseCsvController {
         Set<String> categories=new HashSet<>(jdbc.queryForList("SELECT id FROM category WHERE group_id=?",String.class,group));
         Set<String> payments=new HashSet<>(jdbc.queryForList("SELECT id FROM payment_method WHERE group_id=?",String.class,group));
         Set<String> labels=new HashSet<>(jdbc.queryForList("SELECT id FROM shopping_label WHERE group_id=?",String.class,group));
-        Set<String> closed=new HashSet<>();for(Map<String,Object>x:jdbc.queryForList("SELECT year,month FROM fixed WHERE group_id=?",group))closed.add(number(x.get("year"))+"-"+number(x.get("month")));
         List<PurchaseRow> result=new ArrayList<>();
         for(int i=1;i<rows.size();i++){
             List<String> row=rows.get(i);int line=i+1;
@@ -129,7 +128,7 @@ public class PurchaseCsvController {
             if(amount<1)throw error(line,"金額は1円以上で入力してください。");
             int settlement=switch(row.get(6).strip()){case "未精算","UNSETTLED","1"->1;case "精算済","SETTLED","2"->2;default->throw error(line,"精算は未精算または精算済を指定してください。");};
             String labelCsv=normalizeLabels(row.get(7),labels,line);
-            if(closed.contains(date.getYear()+"-"+date.getMonthValue()))throw error(line,"月次確定済みの年月にはインポートできません。");
+            assertOpen(group,date,line);
             result.add(new PurchaseRow(date,member,category,type,payment,amount,settlement,labelCsv,row.get(8)));
         }
         if(result.isEmpty())throw new IllegalArgumentException("インポート対象の購入データがありません。");
@@ -145,13 +144,13 @@ public class PurchaseCsvController {
 
     private List<BudgetRow> parseBudgets(MultipartFile file,String group)throws IOException{
         List<List<String>> rows=readRows(file,BUDGET_HEADER);Set<String> categories=new HashSet<>(jdbc.queryForList("SELECT id FROM category WHERE group_id=?",String.class,group));Set<String> keys=new HashSet<>();List<BudgetRow> result=new ArrayList<>();
-        for(int i=1;i<rows.size();i++){List<String> row=rows.get(i);int line=i+1;if(blankRow(row))continue;if(row.size()!=BUDGET_HEADER.size())throw error(line,"列数が正しくありません。");int year=parseInt(row.get(0),line,"年"),month=parseInt(row.get(1),line,"月"),amount=parseInt(row.get(3),line,"予算額");String category=row.get(2).strip();if(year<1900||year>9999)throw error(line,"年が正しくありません。");if(month<1||month>12)throw error(line,"月は1～12で入力してください。");if(!categories.contains(category))throw error(line,"カテゴリーIDが存在しません。");if(amount<0)throw error(line,"予算額は0以上で入力してください。");Integer fixed=jdbc.queryForObject("SELECT count(*) FROM fixed WHERE group_id=? AND year=? AND month=?",Integer.class,group,year,month);if(fixed!=null&&fixed>0)throw error(line,"月次確定済みの年月にはインポートできません。");if(!keys.add(year+":"+month+":"+category))throw error(line,"同じ年月・カテゴリーがCSV内で重複しています。");result.add(new BudgetRow(year,month,category,amount));}
+        for(int i=1;i<rows.size();i++){List<String> row=rows.get(i);int line=i+1;if(blankRow(row))continue;if(row.size()!=BUDGET_HEADER.size())throw error(line,"列数が正しくありません。");int year=parseInt(row.get(0),line,"年"),month=parseInt(row.get(1),line,"月"),amount=parseInt(row.get(3),line,"予算額");String category=row.get(2).strip();if(year<1900||year>9999)throw error(line,"年が正しくありません。");if(month<1||month>12)throw error(line,"月は1～12で入力してください。");if(!categories.contains(category))throw error(line,"カテゴリーIDが存在しません。");if(amount<0)throw error(line,"予算額は0以上で入力してください。");assertOpen(group,LocalDate.of(year,month,1),line);if(!keys.add(year+":"+month+":"+category))throw error(line,"同じ年月・カテゴリーがCSV内で重複しています。");result.add(new BudgetRow(year,month,category,amount));}
         if(result.isEmpty())throw new IllegalArgumentException("インポート対象の予算データがありません。");return result;
     }
 
-    private List<CommunicationRow> parseCommunications(MultipartFile file)throws IOException{
+    private List<CommunicationRow> parseCommunications(MultipartFile file,String group)throws IOException{
         List<List<String>> rows=readRows(file,COMMUNICATION_HEADER);List<CommunicationRow> result=new ArrayList<>();
-        for(int i=1;i<rows.size();i++){List<String> row=rows.get(i);int line=i+1;if(blankRow(row))continue;if(row.size()!=COMMUNICATION_HEADER.size())throw error(line,"列数が正しくありません。");LocalDate received=parseDate(row.get(0),line,"いただき日",true),returned=parseDate(row.get(6),line,"おかえし日",false);String from=row.get(1).strip(),to=row.get(2).strip(),item=row.get(3).strip();if(from.isEmpty()||to.isEmpty()||item.isEmpty())throw error(line,"from、to、いただきものは必須です。");if(from.length()>200||to.length()>200||item.length()>200||row.get(5).length()>500||row.get(7).length()>200||row.get(9).length()>500)throw error(line,"文字数が上限を超えています。");int amount=parseInt(row.get(4),line,"金額");if(amount<0)throw error(line,"金額は0以上で入力してください。");Integer returnAmount=row.get(8).isBlank()?null:parseInt(row.get(8),line,"おかえし金額");if(returnAmount!=null&&returnAmount<0)throw error(line,"おかえし金額は0以上で入力してください。");int flag=parseReturnStatus(row.get(10),line);result.add(new CommunicationRow(received,from,to,item,amount,row.get(5),returned,row.get(7),returnAmount,row.get(9),flag));}
+        for(int i=1;i<rows.size();i++){List<String> row=rows.get(i);int line=i+1;if(blankRow(row))continue;if(row.size()!=COMMUNICATION_HEADER.size())throw error(line,"列数が正しくありません。");LocalDate received=parseDate(row.get(0),line,"いただき日",true),returned=parseDate(row.get(6),line,"おかえし日",false);assertOpen(group,received,line);if(returned!=null)assertOpen(group,returned,line);String from=row.get(1).strip(),to=row.get(2).strip(),item=row.get(3).strip();if(from.isEmpty()||to.isEmpty()||item.isEmpty())throw error(line,"from、to、いただきものは必須です。");if(from.length()>200||to.length()>200||item.length()>200||row.get(5).length()>500||row.get(7).length()>200||row.get(9).length()>500)throw error(line,"文字数が上限を超えています。");int amount=parseInt(row.get(4),line,"金額");if(amount<0)throw error(line,"金額は0以上で入力してください。");Integer returnAmount=row.get(8).isBlank()?null:parseInt(row.get(8),line,"おかえし金額");if(returnAmount!=null&&returnAmount<0)throw error(line,"おかえし金額は0以上で入力してください。");int flag=parseReturnStatus(row.get(10),line);result.add(new CommunicationRow(received,from,to,item,amount,row.get(5),returned,row.get(7),returnAmount,row.get(9),flag));}
         if(result.isEmpty())throw new IllegalArgumentException("インポート対象のお付き合い帳データがありません。");return result;
     }
 
@@ -160,6 +159,7 @@ public class PurchaseCsvController {
     private int parseInt(String value,int line,String name){try{return Integer.parseInt(value.strip());}catch(NumberFormatException ex){throw error(line,name+"は整数で入力してください。");}}
     private LocalDate parseDate(String value,int line,String name,boolean required){if(value==null||value.isBlank()){if(required)throw error(line,name+"は必須です。");return null;}try{return LocalDate.parse(value.strip());}catch(DateTimeParseException ex){throw error(line,name+"はyyyy-MM-dd形式で入力してください。");}}
     private int parseReturnStatus(String value,int line){return switch(value.strip()){case "未返却","0"->0;case "返却済","1"->1;case "返却不要","2"->2;default->throw error(line,"返却状況は未返却、返却済、返却不要のいずれかを指定してください。");};}
+    private void assertOpen(String group,LocalDate date,int line){Boolean fixed=jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM fixed f WHERE f.group_id=? AND f.year=? AND f.month=?) OR EXISTS(SELECT 1 FROM budgets b WHERE b.group_id=? AND b.year=? AND b.month=? AND b.fixed_flag=1) OR EXISTS(SELECT 1 FROM shopping s WHERE s.group_id=? AND EXTRACT(YEAR FROM s.shopping_date)=? AND EXTRACT(MONTH FROM s.shopping_date)=? AND s.fixed_flag=1)",Boolean.class,group,date.getYear(),date.getMonthValue(),group,date.getYear(),date.getMonthValue(),group,date.getYear(),date.getMonthValue());if(Boolean.TRUE.equals(fixed))throw error(line,"月次確定済みの年月にはインポートできません。");}
     private String returnStatus(int flag){return flag==1?"返却済":flag==2?"返却不要":"未返却";}
     private String dateText(Object value){if(value==null)return "";if(value instanceof Timestamp t)return t.toLocalDateTime().toLocalDate().toString();if(value instanceof java.sql.Date d)return d.toLocalDate().toString();return String.valueOf(value);}
     private int numberOrZero(Object value){return value==null?0:number(value);}

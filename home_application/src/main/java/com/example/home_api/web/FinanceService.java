@@ -34,28 +34,48 @@ public class FinanceService {
         SELECT c.category_name,COALESCE(SUM(s.amount),0) amount FROM category c LEFT JOIN shopping s
         ON s.category_id=c.id AND s.type=1 AND EXTRACT(YEAR FROM s.shopping_date)=? AND EXTRACT(MONTH FROM s.shopping_date)=?
         WHERE c.group_id=? GROUP BY c.id,c.category_name,c.category_no ORDER BY c.category_no""",year,month,group);}
-    @Transactional public void addShopping(String group,String user,ShoppingForm f){jdbc.update("""
+    @Transactional public void addShopping(String group,String user,ShoppingForm f){ensureDateOpen(group,f.date());jdbc.update("""
         INSERT INTO shopping(group_id,shopping_date,shopping_user_id,category_id,type,payment,settlement,amount,remarks,create_user_id,fixed_flag,create_date,update_date)
         VALUES (?,?,?,?,?,?,?,?,?,?,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",group,Timestamp.valueOf(f.date().atStartOfDay()),user,f.categoryId(),f.type(),f.payment(),f.settlement(),f.amount(),f.remarks(),user);}
     public void deleteShopping(String group,long id){jdbc.update("DELETE FROM shopping s WHERE s.id=? AND s.group_id=? AND COALESCE(s.settlement,1)<>2 AND s.fixed_flag=0 AND NOT EXISTS(SELECT 1 FROM fixed f WHERE f.group_id=s.group_id AND f.year=EXTRACT(YEAR FROM s.shopping_date)::int AND f.month=EXTRACT(MONTH FROM s.shopping_date)::int)",id,group);}
-    public List<Map<String,Object>> budgets(String group,int year,int month){return jdbc.queryForList("""
-        SELECT c.id,c.category_name,COALESCE(b.amount,0) amount FROM category c LEFT JOIN budgets b
-        ON b.category_id=c.id AND b.group_id=c.group_id AND b.year=? AND b.month=?
-        WHERE c.group_id=? AND c.disabled_flag=0 ORDER BY c.category_no""",year,month,group);}
-    @Transactional public void saveBudget(String group,int year,int month,String category,int amount){jdbc.update("""
+    public List<Map<String,Object>> budgets(String group,int year,int month){
+        if(!monthFixed(group,year,month))return jdbc.queryForList("""
+            SELECT c.id,c.category_name,COALESCE(b.amount,0) amount,0 historical FROM category c LEFT JOIN budgets b
+            ON b.category_id=c.id AND b.group_id=c.group_id AND b.year=? AND b.month=?
+            WHERE c.group_id=? AND c.disabled_flag=0 AND c.deleted_flag=0 ORDER BY c.category_no""",year,month,group);
+        return jdbc.queryForList("""
+            WITH sources AS (
+              SELECT c.id,c.category_name,category_no sort_no,0 rank FROM category c WHERE c.group_id=? AND c.disabled_flag=0 AND c.deleted_flag=0
+              UNION ALL
+              SELECT s.master_id,s.display_name,s.display_order,1 rank FROM monthly_master_snapshot s
+                WHERE s.group_id=? AND s.year=? AND s.month=? AND s.master_type='CATEGORY'
+              UNION ALL
+              SELECT ids.id,COALESCE(c.category_name,'削除済みカテゴリー（'||ids.id||'）'),COALESCE(c.category_no,999999),2 rank
+                FROM (SELECT category_id id FROM budgets WHERE group_id=? AND year=? AND month=? UNION SELECT category_id FROM shopping WHERE group_id=? AND EXTRACT(YEAR FROM shopping_date)=? AND EXTRACT(MONTH FROM shopping_date)=?) ids
+                LEFT JOIN category c ON c.group_id=? AND c.id=ids.id
+            ), chosen AS (SELECT DISTINCT ON(id) id,category_name,sort_no,rank FROM sources ORDER BY id,rank)
+            SELECT chosen.id,chosen.category_name,COALESCE(b.amount,0) amount,CASE WHEN chosen.rank=0 THEN 0 ELSE 1 END historical
+              FROM chosen LEFT JOIN budgets b ON b.group_id=? AND b.year=? AND b.month=? AND b.category_id=chosen.id
+             ORDER BY chosen.rank,chosen.sort_no,chosen.category_name
+            """,group,group,year,month,group,year,month,group,year,month,group,group,year,month);
+    }
+    @Transactional public void saveBudget(String group,int year,int month,String category,int amount){ensureMonthOpen(group,year,month);jdbc.update("""
         INSERT INTO budgets(group_id,year,month,category_id,amount,fixed_flag,create_date,update_date)
         VALUES (?,?,?,?,?,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON CONFLICT(group_id,year,month,category_id)
         DO UPDATE SET amount=EXCLUDED.amount,update_date=CURRENT_TIMESTAMP""",group,year,month,category,amount);}
     public long budgetTotal(String group,int year,int month){Long value=jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM budgets WHERE group_id=? AND year=? AND month=?",Long.class,group,year,month);return value==null?0L:value;}
     @Transactional public void saveBudgets(String group,int year,int month,List<String> categoryIds,List<Integer> amounts,boolean allMonths){
         if(categoryIds.size()!=amounts.size())throw new IllegalArgumentException("予算の入力内容が不正です");
-        var valid=new java.util.HashSet<>(jdbc.queryForList("SELECT id FROM category WHERE group_id=? AND disabled_flag=0",String.class,group));
+        if(allMonths){if(yearHasFixedMonth(group,year))throw new IllegalStateException("月次確定済みの年月は変更できません。");}
+        else ensureMonthOpen(group,year,month);
+        var valid=new java.util.HashSet<>(jdbc.queryForList("SELECT id FROM category WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0",String.class,group));
         if(allMonths)jdbc.update("DELETE FROM budgets b WHERE b.group_id=? AND b.year=? AND NOT EXISTS(SELECT 1 FROM category c WHERE c.id=b.category_id AND c.group_id=b.group_id AND c.disabled_flag=0)",group,year);
         else jdbc.update("DELETE FROM budgets b WHERE b.group_id=? AND b.year=? AND b.month=? AND NOT EXISTS(SELECT 1 FROM category c WHERE c.id=b.category_id AND c.group_id=b.group_id AND c.disabled_flag=0)",group,year,month);
         for(int i=0;i<categoryIds.size();i++){String category=categoryIds.get(i);if(!valid.contains(category))continue;int amount=Math.max(0,amounts.get(i)==null?0:amounts.get(i));if(allMonths){for(int m=1;m<=12;m++)saveBudget(group,year,m,category,amount);}else saveBudget(group,year,month,category,amount);}
     }
     @Transactional public void copyPreviousBudgets(String group,YearMonth target){
-        YearMonth source=target.minusMonths(1);var categories=jdbc.queryForList("SELECT id FROM category WHERE group_id=? AND disabled_flag=0 ORDER BY category_no",String.class,group);
+        ensureMonthOpen(group,target.getYear(),target.getMonthValue());
+        YearMonth source=target.minusMonths(1);var categories=jdbc.queryForList("SELECT id FROM category WHERE group_id=? AND disabled_flag=0 AND deleted_flag=0 ORDER BY category_no",String.class,group);
         for(String category:categories){Integer amount=jdbc.query("SELECT amount FROM budgets WHERE group_id=? AND year=? AND month=? AND category_id=?",rs->rs.next()?rs.getInt(1):0,group,source.getYear(),source.getMonthValue(),category);saveBudget(group,target.getYear(),target.getMonthValue(),category,amount==null?0:amount);}
     }
     public List<Map<String,Object>> yearlyBudgets(String group,int year){return jdbc.queryForList("""
@@ -69,8 +89,12 @@ public class FinanceService {
         COALESCE(SUM(b.amount),0) total FROM category c LEFT JOIN budgets b ON b.category_id=c.id AND b.group_id=c.group_id AND b.year=?
         WHERE c.group_id=? AND c.disabled_flag=0 GROUP BY c.id,c.category_name,c.category_no ORDER BY c.category_no""",year,group);}
     public List<Long> yearlyBudgetMonthTotals(String group,int year){var result=new ArrayList<Long>();for(int month=1;month<=12;month++)result.add(budgetTotal(group,year,month));return result;}
-    public boolean monthFixed(String group,int year,int month){Integer n=jdbc.queryForObject("SELECT count(*) FROM fixed WHERE group_id=? AND year=? AND month=?",Integer.class,group,year,month);return n!=null&&n>0;}
-    public boolean yearHasFixedMonth(String group,int year){Integer n=jdbc.queryForObject("SELECT count(*) FROM fixed WHERE group_id=? AND year=?",Integer.class,group,year);return n!=null&&n>0;}
+    public boolean monthFixed(String group,int year,int month){Boolean fixed=jdbc.queryForObject("""
+        SELECT EXISTS(SELECT 1 FROM fixed f WHERE f.group_id=? AND f.year=? AND f.month=?)
+            OR EXISTS(SELECT 1 FROM budgets b WHERE b.group_id=? AND b.year=? AND b.month=? AND b.fixed_flag=1)
+            OR EXISTS(SELECT 1 FROM shopping s WHERE s.group_id=? AND EXTRACT(YEAR FROM s.shopping_date)=? AND EXTRACT(MONTH FROM s.shopping_date)=? AND s.fixed_flag=1)
+        """,Boolean.class,group,year,month,group,year,month,group,year,month);return Boolean.TRUE.equals(fixed);}
+    public boolean yearHasFixedMonth(String group,int year){Boolean fixed=jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM fixed f WHERE f.group_id=? AND f.year=?) OR EXISTS(SELECT 1 FROM budgets b WHERE b.group_id=? AND b.year=? AND b.fixed_flag=1) OR EXISTS(SELECT 1 FROM shopping s WHERE s.group_id=? AND EXTRACT(YEAR FROM s.shopping_date)=? AND s.fixed_flag=1)",Boolean.class,group,year,group,year,group,year);return Boolean.TRUE.equals(fixed);}
     public List<Map<String,Object>> communications(String group,String keyword,Integer returnFlag){
         StringBuilder sql=new StringBuilder("SELECT * FROM communication WHERE group_id=?");List<Object> args=new ArrayList<>();args.add(group);
         if(keyword!=null&&!keyword.isBlank()){sql.append(" AND (CAST(id AS text) ILIKE ? OR COALESCE(receive_from,'') ILIKE ? OR COALESCE(receive_to,'') ILIKE ?)");String like="%"+keyword.trim()+"%";args.add(like);args.add(like);args.add(like);}
@@ -78,14 +102,22 @@ public class FinanceService {
         sql.append(" ORDER BY receive_date DESC,id DESC");return jdbc.queryForList(sql.toString(),args.toArray());
     }
     public Map<String,Object> communication(String group,int id){List<Map<String,Object>> rows=jdbc.queryForList("SELECT * FROM communication WHERE group_id=? AND id=?",group,id);if(rows.isEmpty())throw new IllegalArgumentException("お付き合い帳データが見つかりません");return rows.get(0);}
-    @Transactional public void addCommunication(String group,CommunicationForm f){jdbc.update("""
+    @Transactional public void addCommunication(String group,CommunicationForm f){ensureDateOpen(group,f.receiveDate());jdbc.update("""
         INSERT INTO communication(group_id,receive_date,receive_from,receive_to,receive_item,receive_amount,receive_remarks,return_flag,create_date,update_date)
         VALUES (?,?,?,?,?,?,?,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",group,Timestamp.valueOf(f.receiveDate().atStartOfDay()),f.receiveFrom(),f.receiveTo(),f.receiveItem(),String.valueOf(f.receiveAmount()),f.receiveRemarks());}
-    @Transactional public void updateCommunication(String group,CommunicationEditForm f){jdbc.update("""
+    @Transactional public void updateCommunication(String group,CommunicationEditForm f){
+        List<Map<String,Object>> current=jdbc.queryForList("SELECT receive_date,return_date FROM communication WHERE group_id=? AND id=?",group,f.id());
+        if(current.isEmpty())throw new IllegalArgumentException("お付き合い帳データが見つかりません");
+        ensureStoredDateOpen(group,current.get(0).get("receive_date"));ensureStoredDateOpen(group,current.get(0).get("return_date"));
+        ensureDateOpen(group,f.receiveDate());if(f.returnDate()!=null)ensureDateOpen(group,f.returnDate());
+        jdbc.update("""
         UPDATE communication SET receive_date=?,receive_from=?,receive_to=?,receive_item=?,receive_amount=?,receive_remarks=?,
         return_date=?,return_item=?,return_amount=?,return_remarks=?,return_flag=?,update_date=CURRENT_TIMESTAMP WHERE group_id=? AND id=?""",
         Timestamp.valueOf(f.receiveDate().atStartOfDay()),f.receiveFrom(),f.receiveTo(),f.receiveItem(),String.valueOf(f.receiveAmount()),f.receiveRemarks(),
         f.returnDate()==null?null:Timestamp.valueOf(f.returnDate().atStartOfDay()),f.returnItem(),f.returnAmount()==null?null:String.valueOf(f.returnAmount()),f.returnRemarks(),f.returnFlag(),group,f.id());}
+    public void ensureMonthOpen(String group,int year,int month){if(monthFixed(group,year,month))throw new IllegalStateException("月次確定済みの年月は変更できません。");}
+    public void ensureDateOpen(String group,LocalDate date){if(date!=null)ensureMonthOpen(group,date.getYear(),date.getMonthValue());}
+    private void ensureStoredDateOpen(String group,Object value){if(value instanceof Timestamp timestamp)ensureDateOpen(group,timestamp.toLocalDateTime().toLocalDate());else if(value instanceof java.sql.Date date)ensureDateOpen(group,date.toLocalDate());}
     public record ShoppingForm(LocalDate date,String categoryId,int type,int payment,int settlement,int amount,String remarks){}
     public record CommunicationForm(LocalDate receiveDate,String receiveFrom,String receiveTo,String receiveItem,int receiveAmount,String receiveRemarks){}
     public record CommunicationEditForm(int id,LocalDate receiveDate,String receiveFrom,String receiveTo,String receiveItem,int receiveAmount,String receiveRemarks,LocalDate returnDate,String returnItem,Integer returnAmount,String returnRemarks,int returnFlag){}
