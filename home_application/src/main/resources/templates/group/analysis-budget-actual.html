@@ -20,12 +20,13 @@
 .legend .actual:before{background:#f28b66}
 .horizontal-list{display:grid;gap:18px}
 .horizontal-row{display:grid;grid-template-columns:minmax(130px,220px) 1fr;gap:12px}
-.bar-area{display:grid;gap:5px}
-.bar{position:relative;height:28px;min-width:0;border-radius:5px}
-.bar-value{position:absolute;top:50%;left:9px;z-index:1;transform:translateY(-50%);color:#17212b;font-size:.78rem;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px rgba(255,255,255,.9)}
+.bar-area{display:grid;gap:5px;padding-right:90px}
+.bar{position:relative;height:28px;min-width:0;border-radius:5px;overflow:visible}
+.bar-value{position:absolute;top:50%;left:9px;z-index:3;max-width:none;transform:translateY(-50%);color:#17212b;font-size:.78rem;font-weight:800;line-height:1.2;white-space:nowrap;text-shadow:0 1px 2px #fff,0 -1px 2px #fff}
 .bar.budget{background:#6da9e8}
 .bar.actual{background:#f28b66}
 .metrics{grid-column:2;display:flex;flex-wrap:wrap;gap:5px 18px;color:#52606c;font-size:.86rem}
+.usage-rate-over{color:#d9303e!important;font-weight:700}
 .chart-scroll{overflow:auto}
 .vertical-chart{display:flex;align-items:flex-end;gap:18px;height:370px;min-width:max-content;padding:54px 20px 45px;border-left:1px solid #bfc7cf;border-bottom:1px solid #bfc7cf}
 .chart-group{position:relative;display:flex;align-items:flex-end;justify-content:center;gap:12px;width:126px;height:100%}
@@ -41,6 +42,7 @@
 .annual-cards,.annual-card{min-width:0;max-width:100%}.annual-card{overflow:hidden}.annual-chart-scroll{display:block;width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}.annual-chart{width:max-content;box-sizing:border-box}
 @media(max-width:750px){.analysis-wrap{width:calc(100vw - 28px);max-width:100%}.condition-form{align-items:stretch;flex-direction:column}
 .horizontal-row{grid-template-columns:1fr}
+.bar-area{padding-right:76px}
 .metrics{grid-column:1}
 .horizontal-row strong{margin-bottom:2px}
 .annual-card__header{flex-direction:column}.annual-card__totals{justify-content:flex-start}.month-grid{grid-template-columns:1fr 1fr}.mini-row{grid-template-columns:54px 1fr}.mini-value{grid-column:2;text-align:right}
@@ -99,7 +101,7 @@
 </span>
 <span th:text="${'平均／月 ' + #numbers.formatInteger(r.average, 1, 'COMMA') + '円'}">
 </span>
-<span th:text="|使用率 ${r.rate}%|">
+<span th:text="|使用率 ${r.rate}%|" th:classappend="${r.rate >= 100 ? 'usage-rate-over' : ''}">
 </span>
 <span th:text="|残金 ${#numbers.formatInteger(r.remaining,1,'COMMA')}円|">
 </span>
@@ -115,8 +117,8 @@
 <span class="actual">支出</span>
 </div>
 <div class="annual-cards">
-<article class="annual-card" th:each="card:${annualCards}" th:classappend="${card.totalCard}?' total-card':''">
-<div class="annual-card__header"><h3 th:text="${card.name}">カテゴリー</h3><div class="annual-card__totals"><span th:text="${'予算＋収入 ' + #numbers.formatInteger(card.available, 1, 'COMMA') + '円'}"></span><span th:text="${'支出 ' + #numbers.formatInteger(card.expense, 1, 'COMMA') + '円'}"></span><span th:text="${'使用率 ' + card.rate + '%'}"></span><span th:text="${'残金 ' + #numbers.formatInteger(card.remaining, 1, 'COMMA') + '円'}"></span></div></div>
+<article class="annual-card" th:each="card:${annualCards}" th:classappend="${card.totalCard ? ' total-card' : (card.referenceError == 1 ? ' reference-error-card' : '')}">
+<div class="annual-card__header"><h3 th:text="${card.name}">カテゴリー</h3><div class="annual-card__totals"><span th:text="${'予算＋収入 ' + #numbers.formatInteger(card.available, 1, 'COMMA') + '円'}"></span><span th:text="${'支出 ' + #numbers.formatInteger(card.expense, 1, 'COMMA') + '円'}"></span><span th:text="${'使用率 ' + card.rate + '%'}" th:classappend="${card.rate >= 100 ? 'usage-rate-over' : ''}"></span><span th:text="${'残金 ' + #numbers.formatInteger(card.remaining, 1, 'COMMA') + '円'}"></span></div></div>
 <div class="annual-chart-scroll"><div class="annual-chart">
 <div class="annual-month" th:each="month:${card.months}">
 <div class="annual-bars">

@@ -12,6 +12,7 @@
 .manage-wrap{width:min(1500px,94vw);margin:auto}
 .data-table tbody tr.reference-warning-row{background:#fff0f1}.data-table tbody tr.reference-warning-row:hover{background:#ffe1e4}.reference-warning-row .locked{color:#c52f45;font-weight:700}
 .list-toolbar{display:flex;justify-content:flex-end;margin-bottom:18px}
+.filter-summary-card{width:min(1298px,100%);box-sizing:border-box;margin:0 auto 18px;padding:18px 22px;border:1px solid #dbe3e9;border-radius:14px;background:#fff;box-shadow:0 4px 14px #2233440b}.filter-summary-card h2{margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid #e1e6ea;font-size:1.15rem}.filter-summary-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px;margin:0}.filter-summary-item{display:grid;grid-template-columns:minmax(95px,auto) minmax(0,1fr);gap:10px;align-items:start;padding:8px 0;border-bottom:1px solid #edf0f2}.filter-summary-item dt{font-weight:700;color:#53616d}.filter-summary-item dd{min-width:0;margin:0;overflow-wrap:anywhere}.filter-summary-empty{margin:0;color:#77818a}
 .purchase-search-dialog{width:min(760px,calc(100vw - 28px));max-height:90vh;padding:0;border:0;border-radius:14px;overflow:auto}
 .purchase-search-dialog::backdrop{background:rgba(20,28,40,.48);backdrop-filter:blur(4px)}
 .search-form{display:grid;gap:16px;padding:26px}
@@ -25,6 +26,7 @@
 .search-fields>.search-pair{display:grid;grid-template-columns:1fr 1fr;gap:15px;width:100%}
 .search-fields>.search-pair>label{width:100%}
 .search-fields>.full{width:100%}
+.date-mode-selector{margin:0;padding:14px 16px;border:1px solid #d8e0e7;border-radius:10px}.date-mode-selector legend{padding:0 6px;font-weight:600}.date-mode-options{display:flex;align-items:center;gap:20px;flex-wrap:wrap}.date-mode-options label{display:inline-flex;align-items:center;gap:7px;width:auto;margin:0}.date-mode-options input{width:auto;margin:0}.date-mode-panel[hidden]{display:none!important}.date-mode-panel small{display:block;margin-top:6px;color:#66727c;font-size:.82rem}
 .search-actions{position:sticky;bottom:0;background:#fff;padding-top:12px}
 .search-actions,.bulk-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 .summary-action-row{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;gap:18px;width:min(1298px,100%);margin:0 auto 18px}
@@ -47,17 +49,21 @@
 .payment-total{font-weight:700;white-space:nowrap}
 .empty-summary{color:#77818a;padding-top:14px}
 .table-scroll{overflow:auto}
+.table-display-options{display:flex;justify-content:flex-end;margin:0 0 12px}.table-display-options label{display:inline-flex;align-items:center;gap:8px;width:auto;margin:0}.table-display-options input{width:auto;margin:0}
 .data-table{width:100%;min-width:1050px;border-collapse:collapse}
+.data-table.hide-remarks .remarks-column{display:none}
 .data-table th,.data-table td{padding:11px 10px;border-bottom:1px solid #dbe0e4;white-space:nowrap}
 .data-table tbody tr{cursor:pointer}
 .data-table tbody tr:hover{background:#f3f5f7}
 .data-table tbody tr.settled-row,.data-table tbody tr.settled-row:hover{background:#d9dee2;color:#59636c}
 .select-cell{width:58px;min-width:58px;text-align:center;cursor:pointer}
 .select-cell input[type="checkbox"]{display:block;width:22px;height:22px;margin:0 auto;cursor:pointer}
+.select-cell input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.45}
 .selected-total{font-size:1.1rem;font-weight:700}
 .locked{color:#7a8288}
 .multi{min-height:105px}
 @media(max-width:700px){.search-fields>.half{width:100%}
+.filter-summary-list{grid-template-columns:1fr}.filter-summary-card{padding:16px}
 .search-fields>.search-pair{grid-template-columns:1fr}
 .search-form{padding:26px 18px}
 .summary-action-row{grid-template-columns:1fr}
@@ -91,10 +97,14 @@
 <h2>検索条件</h2>
 <div class="pattern-block" th:if="${!#lists.isEmpty(patterns)}">
 <span>購入データ検索パターン</span>
-<div class="pattern-bar"><button type="button" class="pattern-button" th:each="p:${patterns}" th:text="${p.display_name}" th:attr="data-from=${p.date_from},data-to=${p.date_to},data-amount-from=${p.amount_from},data-amount-to=${p.amount_to},data-categories=${p.category_ids},data-type=${p.transaction_type},data-payments=${p.payment_method_ids},data-members=${p.member_ids},data-settlement=${p.settlement_status},data-labels=${p.label_ids},data-note=${p.note}"></button></div>
+<div class="pattern-bar"><button type="button" class="pattern-button" th:each="p:${patterns}" th:text="${p.display_name}" th:attr="data-amount-from=${p.amount_from},data-amount-to=${p.amount_to},data-categories=${p.category_ids},data-type=${p.transaction_type},data-payments=${p.payment_method_ids},data-members=${p.member_ids},data-settlement=${p.settlement_status},data-labels=${p.label_ids},data-note=${p.note}"></button></div>
 </div>
 <div class="search-fields">
-<div class="search-pair">
+<fieldset class="date-mode-selector full"><legend>購入日の指定方法</legend><div class="date-mode-options"><label><input type="radio" name="dateMode" value="month">対象月</label><label><input type="radio" name="dateMode" value="range">購入日（From～To）</label></div></fieldset>
+<label class="half date-mode-panel" id="purchase-month-panel">対象月<input type="month" id="purchase-target-month" aria-describedby="purchase-target-month-help">
+<small id="purchase-target-month-help">選択すると購入日の開始日・終了日へ自動設定します。</small>
+</label>
+<div class="search-pair date-mode-panel" id="purchase-range-panel">
 <label>購入日（From）<input type="date" name="dateFrom" th:value="${filters.getFirst('dateFrom')}">
 </label>
 <label>購入日（To）<input type="date" name="dateTo" th:value="${filters.getFirst('dateTo')}">
@@ -146,6 +156,11 @@
 </div>
 </form>
 </dialog>
+<section class="filter-summary-card" aria-labelledby="filter-summary-title">
+<h2 id="filter-summary-title">現在の検索条件</h2>
+<dl class="filter-summary-list" id="filter-summary-list"></dl>
+<p class="filter-summary-empty" id="filter-summary-empty" hidden>検索条件は設定されていません。</p>
+</section>
 <form method="post" id="bulk-form" th:action="@{/group/purchases/settle}" autocomplete="off">
 <div class="summary-action-row">
 <section class="summary-card" aria-label="検索結果の合計">
@@ -177,6 +192,7 @@
 </section>
 </div>
 <section class="panel">
+<div class="table-display-options"><label><input type="checkbox" id="remarks-column-toggle" checked>備考を表示</label></div>
 <div class="table-scroll">
 <table class="data-table">
 <thead>
@@ -191,14 +207,15 @@
 <th>メンバー</th>
 <th>精算</th>
 <th>金額</th>
-<th>備考</th>
+<th>ラベル</th>
+<th class="remarks-column">備考</th>
 <th>状態</th>
 </tr>
 </thead>
 <tbody>
-<tr th:each="r:${rows}" th:attr="data-url=@{|/group/purchases/${r.id}|}" th:classappend="${r.fixed_flag!=1 and r.reference_warning==1}?' reference-warning-row':(${r.settlement==2}?' settled-row':'')">
-<td class="select-cell" title="選択・解除">
-<input class="row-check" type="checkbox" name="ids" autocomplete="off" th:value="${r.id}" th:attr="data-amount=${r.amount},data-type=${r.type},data-payment=${r.payment_name?:'未設定'}">
+<tr th:each="r:${rows}" th:attr="data-url=@{|/group/purchases/${r.id}|}" th:classappend="${r.monthly_closed!=1 and r.reference_warning==1}?' reference-warning-row':(${r.settlement==2}?' settled-row':'')">
+<td class="select-cell" th:title="${r.monthly_closed==1 ? '月次確定済みのため選択できません' : '選択・解除'}">
+<input class="row-check" type="checkbox" name="ids" autocomplete="off" th:value="${r.id}" th:disabled="${r.monthly_closed==1}" th:attr="data-amount=${r.amount},data-type=${r.type},data-payment=${r.payment_name?:'未設定'}">
 </td>
 <td th:text="${#dates.format(r.shopping_date,'yyyy/MM/dd')}">
 </td>
@@ -214,15 +231,22 @@
 </td>
 <td th:text="|${#numbers.formatInteger(r.amount,1,'COMMA')}円|">
 </td>
-<td th:text="${r.remarks}">
+<td th:text="${r.label_names?:'-'}">
 </td>
-<td class="locked" th:text="${r.fixed_flag == 1 ? '確定済' : (r.reference_warning == 1 ? '要修正' : '編集可')}">
+<td class="remarks-column" th:text="${r.remarks}">
+</td>
+<td class="locked" th:text="${r.monthly_closed == 1 ? '確定済' : (r.reference_warning == 1 ? '要修正' : '編集可')}">
 </td>
 </tr>
 </tbody>
 </table>
 </div>
 </section>
+<nav class="pagination" th:if="${pages > 1}" aria-label="購入データのページ切り替え">
+<a th:if="${previousPageUrl != null}" th:href="${previousPageUrl}">前へ</a>
+<span th:text="|${page} / ${pages}（全${#numbers.formatInteger(total,1,'COMMA')}件）|">1 / 1（全0件）</span>
+<a th:if="${nextPageUrl != null}" th:href="${nextPageUrl}">次へ</a>
+</nav>
 </form>
 </div>
 </main>
@@ -230,17 +254,35 @@
 </footer>
 <script>
 document.getElementById('check-all').checked=false;
+const remarksColumnToggle=document.getElementById('remarks-column-toggle'),purchaseTable=document.querySelector('.data-table');
+let remarksVisible=true;try{remarksVisible=localStorage.getItem('purchase-manage-remarks-visible')!=='false'}catch(ignored){}
+const applyRemarksVisibility=()=>{purchaseTable.classList.toggle('hide-remarks',!remarksColumnToggle.checked);try{localStorage.setItem('purchase-manage-remarks-visible',String(remarksColumnToggle.checked))}catch(ignored){}};
+remarksColumnToggle.checked=remarksVisible;remarksColumnToggle.addEventListener('change',applyRemarksVisibility);applyRemarksVisibility();
 
 document.querySelectorAll('.row-check').forEach(check=>check.checked=false);
 
 (()=>{const form=document.getElementById('search-form'),dialog=document.getElementById('search-dialog');
 document.getElementById('open-search').onclick=()=>dialog.showModal();
+const targetMonth=document.getElementById('purchase-target-month');
+const monthPanel=document.getElementById('purchase-month-panel'),rangePanel=document.getElementById('purchase-range-panel'),dateModeRadios=[...form.querySelectorAll('input[name="dateMode"]')];
+const pad=value=>String(value).padStart(2,'0');
+const monthRange=value=>{const parts=value.split('-').map(Number);if(parts.length!==2||!parts[0]||!parts[1])return null;const lastDay=new Date(parts[0],parts[1],0).getDate();return {from:`${parts[0]}-${pad(parts[1])}-01`,to:`${parts[0]}-${pad(parts[1])}-${pad(lastDay)}`}};
+const setDateMode=mode=>{dateModeRadios.forEach(radio=>radio.checked=radio.value===mode);monthPanel.hidden=mode!=='month';rangePanel.hidden=mode!=='range'};
+const syncTargetMonth=()=>{targetMonth.value='';if(!form.dateFrom.value||!form.dateTo.value||form.dateFrom.value.slice(0,7)!==form.dateTo.value.slice(0,7))return false;const candidate=form.dateFrom.value.slice(0,7),range=monthRange(candidate);if(range&&range.from===form.dateFrom.value&&range.to===form.dateTo.value){targetMonth.value=candidate;return true}return false};
+targetMonth.addEventListener('change',()=>{const range=monthRange(targetMonth.value);if(!range)return;form.dateFrom.value=range.from;form.dateTo.value=range.to});
+dateModeRadios.forEach(radio=>radio.addEventListener('change',()=>{if(!radio.checked)return;setDateMode(radio.value);if(radio.value==='month'&&!targetMonth.value){targetMonth.value=(form.dateFrom.value||new Date().toLocaleDateString('sv-SE')).slice(0,7);targetMonth.dispatchEvent(new Event('change'))}}));
+setDateMode(syncTargetMonth()?'month':'range');
+const filterSummaryList=document.getElementById('filter-summary-list'),filterSummaryEmpty=document.getElementById('filter-summary-empty');
+const field=name=>form.elements.namedItem(name);
+const selectedNames=name=>{const select=field(name);return select&&select.selectedOptions?[...select.selectedOptions].filter(option=>option.value).map(option=>option.textContent.trim()).join('、'):''};
+const selectedName=name=>{const select=field(name);const option=select?.selectedOptions?.[0];return option&&option.value?option.textContent.trim():''};
+const addFilterSummary=(label,value)=>{if(!value)return;const item=document.createElement('div'),term=document.createElement('dt'),description=document.createElement('dd');item.className='filter-summary-item';term.textContent=label;description.textContent=value;item.append(term,description);filterSummaryList.append(item)};
+const renderFilterSummary=()=>{filterSummaryList.replaceChildren();const mode=dateModeRadios.find(radio=>radio.checked)?.value;if(mode==='month'&&targetMonth.value){const [year,month]=targetMonth.value.split('-');addFilterSummary('対象月',`${year}年${Number(month)}月`)}else{const from=field('dateFrom').value,to=field('dateTo').value;if(from||to)addFilterSummary('購入日',`${from||'指定なし'} ～ ${to||'指定なし'}`)}const amountFrom=field('amountFrom').value,amountTo=field('amountTo').value;if(amountFrom||amountTo)addFilterSummary('金額',`${amountFrom||'指定なし'}円 ～ ${amountTo||'指定なし'}円`);addFilterSummary('購入者',selectedNames('memberIds'));addFilterSummary('カテゴリー',selectedNames('categoryIds'));addFilterSummary('種別',selectedName('type'));addFilterSummary('支払い方法',selectedNames('paymentIds'));addFilterSummary('精算',selectedName('settlement'));addFilterSummary('ラベル',selectedNames('labelIds'));addFilterSummary('備考',field('remarks').value.trim());filterSummaryEmpty.hidden=filterSummaryList.children.length>0};
+renderFilterSummary();
 const set=(s,c)=>{const a=(c||'').split(',');
 [...s.options].forEach(o=>o.selected=a.includes(o.value));
 s.dispatchEvent(new Event('change',{bubbles:true}))};
-document.querySelectorAll('.pattern-button').forEach(b=>b.onclick=()=>{form.dateFrom.value=b.dataset.from||'';
-form.dateTo.value=b.dataset.to||'';
-form.amountFrom.value=b.dataset.amountFrom||'';
+document.querySelectorAll('.pattern-button').forEach(b=>b.onclick=()=>{form.amountFrom.value=b.dataset.amountFrom||'';
 form.amountTo.value=b.dataset.amountTo||'';
 form.type.value=b.dataset.type||'';
 set(form.categoryIds,b.dataset.categories);
@@ -250,7 +292,7 @@ form.settlement.value=b.dataset.settlement||'';
 set(form.labelIds,b.dataset.labels);
 form.remarks.value=b.dataset.note||'';
 form.submit()});
-const checks=[...document.querySelectorAll('.row-check')],count=document.getElementById('selected-count'),sum=document.getElementById('selected-sum'),paymentList=document.getElementById('selected-payment-list'),empty=document.getElementById('selected-empty');
+const checks=[...document.querySelectorAll('.row-check:not(:disabled)')],count=document.getElementById('selected-count'),sum=document.getElementById('selected-sum'),paymentList=document.getElementById('selected-payment-list'),empty=document.getElementById('selected-empty');
 const calc=()=>{const on=checks.filter(x=>x.checked),groups=new Map();
 checks.forEach(x=>{const name=x.dataset.payment||'未設定';if(!groups.has(name))groups.set(name,{count:0,total:0})});
 let total=0;
@@ -278,8 +320,8 @@ item.append(info,paymentTotal);
 paymentList.append(item)});
 empty.hidden=true};
 checks.forEach(x=>x.onchange=calc);
-document.querySelectorAll('.select-cell').forEach(cell=>cell.onclick=e=>{e.stopPropagation();const box=cell.querySelector('input[type="checkbox"]');if(e.target!==box){box.checked=!box.checked;box.dispatchEvent(new Event('change',{bubbles:true}))}});
-document.getElementById('check-all').onchange=e=>{checks.forEach(x=>x.checked=e.target.checked);
+document.querySelectorAll('.select-cell').forEach(cell=>cell.onclick=e=>{e.stopPropagation();const box=cell.querySelector('input[type="checkbox"]');if(!box||box.disabled)return;if(e.target!==box){box.checked=!box.checked;box.dispatchEvent(new Event('change',{bubbles:true}))}});
+const checkAll=document.getElementById('check-all');checkAll.disabled=checks.length===0;checkAll.onchange=e=>{checks.forEach(x=>x.checked=e.target.checked);
 calc()};
 document.querySelectorAll('tbody tr').forEach(r=>r.onclick=e=>{if(!e.target.closest('input,button,a'))location.href=r.dataset.url});
 window.selected=()=>{if(checks.some(x=>x.checked))return true;
