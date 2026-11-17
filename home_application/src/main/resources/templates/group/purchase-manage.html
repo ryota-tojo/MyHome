@@ -244,7 +244,7 @@
 </section>
 <nav class="pagination" th:if="${pages > 1}" aria-label="購入データのページ切り替え">
 <a th:if="${previousPageUrl != null}" th:href="${previousPageUrl}">前へ</a>
-<span th:text="|${page} / ${pages}（全${#numbers.formatInteger(total,1,'COMMA')}件）|">1 / 1（全0件）</span>
+<span th:text="${page + ' / ' + pages + '（全' + #numbers.formatInteger(total,1,'COMMA') + '件）'}">1 / 1（全0件）</span>
 <a th:if="${nextPageUrl != null}" th:href="${nextPageUrl}">次へ</a>
 </nav>
 </form>

@@ -18,7 +18,7 @@
 <main>
   <div class="title-area"><h1>月次処理</h1></div>
   <div class="monthly-wrap">
-    <div class="success" th:if="${param.bulkClosed}" th:text="|選択した${param.bulkClosed[0]}か月を一括で月次確定しました。|"></div>
+    <div class="success" th:if="${param.bulkClosed}" th:text="${'選択した' + param.bulkClosed[0] + 'か月を一括で月次確定しました。'}"></div>
     <div class="alert" th:if="${param.error != null and param.error[0] == 'unselected'}">月次確定する月を選択してください。</div>
     <div class="alert" th:if="${param.error != null and param.error[0] == 'condition'}">選択した月に確定条件を満たしていない月があります。詳細画面を確認してください。</div>
     <section class="panel">

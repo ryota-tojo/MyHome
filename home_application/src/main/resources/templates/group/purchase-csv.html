@@ -119,11 +119,11 @@
 <body>
 <header th:replace="~{fragments :: header}"></header>
 <main>
-    <div class="title-area"><h1 th:text="|${csvTitle} CSVエクスポート・インポート|">CSVエクスポート・インポート</h1>
+    <div class="title-area"><h1 th:text="${csvTitle + ' CSVエクスポート・インポート'}">CSVエクスポート・インポート</h1>
     </div>
     <div class="transfer-wrap">
         <div class="success" th:if="${importedCount!=null}"
-             th:text="|${importedType}を${importedCount}件インポートしました。|"></div>
+             th:text="${importedType + 'を' + importedCount + '件インポートしました。'}"></div>
         <div class="alert" th:if="${importError!=null}" th:text="${importError}"></div>
         <section class="dataset-section" th:if="${csvType=='purchases'}">
             <div class="transfer-grid">
