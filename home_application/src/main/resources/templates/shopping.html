@@ -214,7 +214,7 @@
                 <table class="history-table">
                     <thead><tr><th>入力日時</th><th>購入日</th><th>購入者</th><th>カテゴリー</th><th>種別</th><th>支払い方法</th><th>金額</th><th>精算</th><th>状態</th></tr></thead>
                     <tbody><tr th:each="r:${recentPurchases}" th:classappend="${r.reference_warning == 1 ? ' reference-warning-row' : (r.settlement == 2 ? ' settled' : '')}" th:attr="data-url=@{|/group/purchases/${r.id}|}">
-                        <td th:text="${#dates.format(r.create_date,'yyyy/MM/dd HH:mm:ss')}"></td>
+                        <td th:text="${r.create_date_display}"></td>
                         <td><a th:href="@{|/group/purchases/${r.id}|}" th:text="${#dates.format(r.shopping_date,'yyyy/MM/dd')}"></a></td>
                         <td th:text="${r.user_name?:'-'}"></td><td th:text="${r.category_name?:'-'}"></td><td th:text="${r.type==2?'収入':'支出'}"></td><td th:text="${r.payment_name?:'-'}"></td>
                         <td th:text="|${#numbers.formatInteger(r.amount,1,'COMMA')}円|"></td><td th:text="${r.settlement==2?'精算済':'未精算'}"></td><td th:text="${r.fixed_flag==1?'月次確定済み':'編集可能'}"></td>
