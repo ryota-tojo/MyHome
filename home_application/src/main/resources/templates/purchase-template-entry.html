@@ -13,8 +13,8 @@
 <main>
   <div class="title-area"><h1>購入データテンプレート入力</h1></div>
   <div class="template-wrap">
-    <div class="success" th:if="${param.created}" th:text="|${param.created[0]}件の購入データを登録しました。|"></div>
-    <div class="alert" th:if="${param.error}" th:text="${param.error[0]=='closed'?'月次確定済みの月には登録できません。':param.error[0]=='unselected'?'登録するテンプレートを選択してください。':param.error[0]=='incomplete'?'必須項目が未設定のテンプレートが含まれています。':'選択したテンプレートを使用できません。'}"></div>
+    <div class="success" th:if="${param.created}" th:text="${param.created[0] + '件の購入データを登録しました。'}"></div>
+    <div class="alert" th:if="${param.error}" th:text="${param.error[0] == 'closed' ? '月次確定済みの月には登録できません。' : (param.error[0] == 'unselected' ? '登録するテンプレートを選択してください。' : (param.error[0] == 'incomplete' ? '必須項目が未設定のテンプレートが含まれています。' : '選択したテンプレートを使用できません。'))}"></div>
     <form id="template-form" method="post" th:action="@{/shopping/templates}">
       <section class="panel common-date">
         <div><h2>購入日</h2><p>選択したすべてのテンプレートに同じ日付を設定します。</p></div>
