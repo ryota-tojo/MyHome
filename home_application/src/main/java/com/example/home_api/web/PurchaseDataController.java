@@ -120,7 +120,7 @@ public class PurchaseDataController {
         model.addAttribute("inputSettlement",params==null?"UNSETTLED":value(params,"settlement"));
         model.addAttribute("inputLabelIds",params==null?List.of():Optional.ofNullable(params.get("labelIds")).orElse(List.of()));
         model.addAttribute("inputRemarks",params==null?"":value(params,"remarks"));
-        model.addAttribute("recentPurchases",jdbc.queryForList("SELECT s.id,s.shopping_date,s.type,s.amount,s.settlement,s.fixed_flag,s.create_date,c.category_name,pm.payment_name,u.user_name,"+invalidReferenceCase("s")+" reference_warning FROM shopping s LEFT JOIN category c ON c.id=s.category_id LEFT JOIN payment_method pm ON pm.id=s.payment_method_id LEFT JOIN \"user\" u ON u.user_id=s.shopping_user_id WHERE s.group_id=? ORDER BY s.create_date DESC,s.id DESC LIMIT 10",groupId));
+        model.addAttribute("recentPurchases",jdbc.queryForList("SELECT s.id,s.shopping_date,s.type,s.amount,s.settlement,s.fixed_flag,s.create_date,to_char(s.create_date,'YYYY/MM/DD HH24:MI:SS') create_date_display,c.category_name,pm.payment_name,u.user_name,"+invalidReferenceCase("s")+" reference_warning FROM shopping s LEFT JOIN category c ON c.id=s.category_id LEFT JOIN payment_method pm ON pm.id=s.payment_method_id LEFT JOIN \"user\" u ON u.user_id=s.shopping_user_id WHERE s.group_id=? ORDER BY s.create_date DESC,s.id DESC LIMIT 10",groupId));
     }
     private List<Map<String,Object>> similarPurchases(String groupId,MultiValueMap<String,String> params){
         String sql="SELECT s.id,s.shopping_date,s.type,s.amount,s.create_date,u.user_name,c.category_name,pm.payment_name,"+

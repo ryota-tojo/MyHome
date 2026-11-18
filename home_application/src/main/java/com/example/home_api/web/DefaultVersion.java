@@ -9,6 +9,12 @@ import java.time.LocalDateTime;
  * 同じversionがDBに存在する場合、既存レコードは上書きしない。
  */
 public enum DefaultVersion {
+    v1_0_2(
+            "1.0.2",
+            LocalDateTime.of(2026, 11, 18, 0, 0),
+            "【所属グループ】（購入データ入力画面）入力日時をシステム設定のタイムゾーンに依存するように修正",
+            true
+    ),
     v1_0_1(
             "1.0.1",
             LocalDateTime.of(2026, 11, 18, 0, 0),
