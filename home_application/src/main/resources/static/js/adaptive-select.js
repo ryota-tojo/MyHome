@@ -23,13 +23,18 @@ document.addEventListener('DOMContentLoaded',()=>{
     input.setAttribute('role','combobox');
     input.setAttribute('aria-autocomplete','list');
     input.setAttribute('aria-expanded','false');
+    const closeButton=document.createElement('button');
+    closeButton.type='button';
+    closeButton.className='adaptive-combo__close';
+    closeButton.textContent='×';
+    closeButton.setAttribute('aria-label','プルダウンを閉じる');
     const list=document.createElement('div');
     list.className='adaptive-combo__list';
     list.id='adaptive-combo-list-'+index;
     list.setAttribute('role','listbox');
     list.setAttribute('aria-multiselectable',String(select.multiple));
     input.setAttribute('aria-controls',list.id);
-    combo.append(input,list);
+    combo.append(input,closeButton,list);
     select.before(combo);
     const chips=document.createElement('div');
     if(chipsMode){chips.className='adaptive-combo__chips';chips.setAttribute('aria-label','選択済みラベル');combo.after(chips);}
@@ -52,10 +57,9 @@ document.addEventListener('DOMContentLoaded',()=>{
       row.addEventListener('click',()=>{
         if(select.multiple)option.selected=!option.selected;
         else select.value=option.value;
-        input.value='';
-        filter('');
+        if(!chipsMode){input.value='';filter('');}
         select.dispatchEvent(new Event('change',{bubbles:true}));
-        if(select.multiple){input.focus();input.select();}
+        if(select.multiple){input.focus();filter(input.value);}
         else close();
       });
       return {option,row};
@@ -64,7 +68,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     const summary=()=>{
       const selected=sourceOptions.filter(option=>option.selected);
       if(chipsMode){
-        if(document.activeElement!==input)input.value='';
         chips.replaceChildren(...selected.map(option=>{
           const chip=document.createElement('span');chip.className='adaptive-combo__chip';
           const text=document.createElement('span');text.textContent=option.textContent;
@@ -93,13 +96,21 @@ document.addEventListener('DOMContentLoaded',()=>{
       // 直前の文字を上書きしてしまう。初めて開いた時だけ既存表示を選択する。
       if(!alreadyOpen&&input.value)input.select();
     };
-    const close=()=>{combo.classList.remove('open');input.setAttribute('aria-expanded','false');filter('');summary();};
+    const close=()=>{combo.classList.remove('open');input.setAttribute('aria-expanded','false');filter(chipsMode?input.value:'');summary();};
     input.addEventListener('focus',open);
     input.addEventListener('click',open);
     input.addEventListener('input',()=>{open();filter(input.value);});
     input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();event.stopPropagation();open();filter(input.value);return;}if(event.key==='Escape'){event.preventDefault();close();input.blur();}if(event.key==='ArrowDown'){event.preventDefault();open();rows.find(x=>!x.row.hidden)?.row.focus();}});
     list.addEventListener('keydown',event=>{const visible=rows.map(x=>x.row).filter(x=>!x.hidden);const current=visible.indexOf(document.activeElement);if(event.key==='ArrowDown'){event.preventDefault();visible[Math.min(current+1,visible.length-1)]?.focus();}if(event.key==='ArrowUp'){event.preventDefault();current<=0?input.focus():visible[current-1]?.focus();}if(event.key==='Escape'){close();input.focus();}});
-    select.addEventListener('change',()=>{input.value='';summary();});
+    closeButton.addEventListener('mousedown',event=>{event.preventDefault();event.stopPropagation();});
+    closeButton.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();close();input.blur();});
+    select.addEventListener('change',()=>{if(!chipsMode)input.value='';summary();});
+    const ownerLabel=combo.closest('label');
+    ownerLabel?.addEventListener('click',event=>{
+      if(combo.contains(event.target)||chips.contains(event.target)||event.target===select)return;
+      event.preventDefault();
+      if(combo.classList.contains('open')){close();input.blur();}
+    });
     document.addEventListener('mousedown',event=>{if(!combo.contains(event.target)&&!chips.contains(event.target))close();});
     select.form?.addEventListener('reset',()=>setTimeout(summary));
     summary();
