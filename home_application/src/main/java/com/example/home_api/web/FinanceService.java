@@ -31,9 +31,27 @@ public class FinanceService {
         COALESCE(SUM(CASE WHEN type=2 THEN amount ELSE -amount END),0) balance
         FROM shopping WHERE group_id=? AND EXTRACT(YEAR FROM shopping_date)=? AND EXTRACT(MONTH FROM shopping_date)=?""",group,year,month);}
     public List<Map<String,Object>> categorySummary(String group,int year,int month){return jdbc.queryForList("""
-        SELECT c.category_name,COALESCE(SUM(s.amount),0) amount FROM category c LEFT JOIN shopping s
-        ON s.category_id=c.id AND s.type=1 AND EXTRACT(YEAR FROM s.shopping_date)=? AND EXTRACT(MONTH FROM s.shopping_date)=?
-        WHERE c.group_id=? GROUP BY c.id,c.category_name,c.category_no ORDER BY c.category_no""",year,month,group);}
+        SELECT c.category_name,
+               COALESCE(b.budget,0) budget,
+               COALESCE(s.expense,0) expense,
+               COALESCE(s.income,0) income
+          FROM category c
+          LEFT JOIN (
+              SELECT category_id,SUM(amount) budget
+                FROM budgets
+               WHERE group_id=? AND year=? AND month=?
+               GROUP BY category_id
+          ) b ON b.category_id=c.id
+          LEFT JOIN (
+              SELECT category_id,
+                     SUM(CASE WHEN type=1 THEN amount ELSE 0 END) expense,
+                     SUM(CASE WHEN type=2 THEN amount ELSE 0 END) income
+                FROM shopping
+               WHERE group_id=? AND EXTRACT(YEAR FROM shopping_date)=? AND EXTRACT(MONTH FROM shopping_date)=?
+               GROUP BY category_id
+          ) s ON s.category_id=c.id
+         WHERE c.group_id=?
+         ORDER BY c.category_no""",group,year,month,group,year,month,group);}
     @Transactional public void addShopping(String group,String user,ShoppingForm f){ensureDateOpen(group,f.date());jdbc.update("""
         INSERT INTO shopping(group_id,shopping_date,shopping_user_id,category_id,type,payment,settlement,amount,remarks,create_user_id,fixed_flag,create_date,update_date)
         VALUES (?,?,?,?,?,?,?,?,?,?,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",group,Timestamp.valueOf(f.date().atStartOfDay()),user,f.categoryId(),f.type(),f.payment(),f.settlement(),f.amount(),f.remarks(),user);}
