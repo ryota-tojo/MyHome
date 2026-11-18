@@ -4,12 +4,29 @@ import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.time.DateTimeException;
+import java.time.ZoneId;
+import java.util.TimeZone;
+
 @SpringBootApplication
 public class HomeApiApplication {
 
     public static void main(String[] args) {
+        configureTimeZone();
         loadLocalDatabaseSettings();
         SpringApplication.run(HomeApiApplication.class, args);
+    }
+
+    private static void configureTimeZone() {
+        String configured = System.getenv().getOrDefault("APP_TIMEZONE", "Asia/Tokyo");
+        try {
+            ZoneId zone = ZoneId.of(configured);
+            TimeZone.setDefault(TimeZone.getTimeZone(zone));
+            System.setProperty("user.timezone", zone.getId());
+        } catch (DateTimeException ignored) {
+            TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo"));
+            System.setProperty("user.timezone", "Asia/Tokyo");
+        }
     }
 
     /**
