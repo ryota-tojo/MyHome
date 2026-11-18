@@ -7,6 +7,7 @@ services:
       context: ./image/postgres
       dockerfile: Dockerfile
     restart: always
+    command: ["postgres", "-c", "timezone=Asia/Tokyo"]
     ports:
       - "5433:5432"
     volumes:
@@ -16,6 +17,7 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Tokyo
     networks:
       - home_network
     healthcheck:
@@ -39,6 +41,8 @@ services:
     networks:
       - home_network
     environment:
+      TZ: Asia/Tokyo
+      APP_TIMEZONE: Asia/Tokyo
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: ${DB_USER}

@@ -1225,3 +1225,19 @@ table tbody tr.role-row-admin:hover > td {
 .reference-issue-panel{border-color:#e4a1aa;background:#fff1f2}.reference-issue-panel>p{color:#9b2735}.reference-issue-panel ul{display:grid;gap:8px;margin:14px 0 0;padding:0;list-style:none}.reference-issue-panel li{display:flex;justify-content:space-between;gap:16px;padding:10px 12px;border-radius:8px;background:#ffe1e5;color:#8d1f2d}.confirm-dialog{width:min(620px,calc(100vw - 32px));padding:0;border:0;border-radius:16px}.confirm-dialog::backdrop{background:rgba(20,28,40,.48);backdrop-filter:blur(5px)}.confirm-dialog__body{display:grid;gap:18px;padding:clamp(22px,4vw,34px)}.confirm-dialog__body h2,.confirm-dialog__body p{margin:0}.confirm-dialog__body .dialog-actions{display:flex;justify-content:flex-end;gap:10px}
 .reference-error-card{background:#fff0f1!important;border-color:#e4a1aa!important}.reference-error-card h3::after{content:' 無効・削除済み';display:inline-flex;margin-left:8px;padding:3px 7px;border-radius:999px;background:#ffd9de;color:#9d2534;font-size:.68rem;vertical-align:middle}
 .historical-master-row td{background:#fff7f7}.historical-master-badge{display:inline-flex;margin-left:8px;padding:3px 7px;border-radius:999px;background:#ffe0e3;color:#922b38;font-size:.7rem}
+
+/*
+ * Wide page sections live inside the shared 1240px <main>.  A viewport-based
+ * width therefore needs to be centred from the main axis; otherwise it starts
+ * at main's left edge and only overflows to the right.
+ */
+main > .manage-wrap,
+main > .analysis-wrap,
+main > .yearly-wrap,
+main > .detail-wrap,
+main > .list-wrap,
+main > .dashboard-home-image {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+}
