@@ -13,7 +13,7 @@ class ManagementFormRetentionTest {
     @Test void masterCreateKeepsInvalidNameAndReopensCreateDialog() {
         var session=new MockHttpSession();session.setAttribute("activeGroupId","group-1");session.setAttribute("activeGroupLeader",true);
         var flash=new RedirectAttributesModelMap();
-        String view=new GroupMasterController(mock(JdbcTemplate.class)).create("categories"," ",session,flash);
+        String view=new GroupMasterController(mock(JdbcTemplate.class)).create("categories"," ","#f8f6f1",session,flash);
         assertEquals("redirect:/group/masters/categories",view);
         assertEquals("",flash.getFlashAttributes().get("formName"));
         assertEquals("create",flash.getFlashAttributes().get("formMode"));

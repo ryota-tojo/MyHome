@@ -24,9 +24,10 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler successHandler,LoginFailureHandler failureHandler,
                                             PasswordChangeRequiredFilter passwordChangeRequiredFilter,
-                                            GroupAccessRequiredFilter groupAccessRequiredFilter,MaintenanceFilter maintenanceFilter) throws Exception {
+                                            GroupAccessRequiredFilter groupAccessRequiredFilter,MaintenanceFilter maintenanceFilter,
+                                            ReportApiKeyFilter reportApiKeyFilter) throws Exception {
         return http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/register", "/css/**", "/theme.css", "/fonts/**", "/error", "/system-maintenance").permitAll()
+                        .requestMatchers("/login", "/register", "/css/**", "/theme.css", "/fonts/**", "/error", "/system-maintenance", "/api/reports/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/groups/**").hasRole("USER")
                         .requestMatchers("/", "/shopping/**", "/budgets/**", "/communication/**").hasRole("USER")
@@ -34,6 +35,7 @@ public class SecurityConfig {
                 .formLogin(form -> form.loginPage("/login").successHandler(successHandler).failureHandler(failureHandler).permitAll())
                 .sessionManagement(session -> session.invalidSessionUrl("/login?expired"))
                 .logout(logout -> logout.logoutSuccessUrl("/login?logout").deleteCookies("JSESSIONID").permitAll())
+                .addFilterBefore(reportApiKeyFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(passwordChangeRequiredFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(groupAccessRequiredFilter, PasswordChangeRequiredFilter.class)
                 .addFilterAfter(maintenanceFilter, GroupAccessRequiredFilter.class)
@@ -41,4 +43,11 @@ public class SecurityConfig {
     }
 
     @Bean FilterRegistrationBean<MaintenanceFilter> maintenanceFilterRegistration(MaintenanceFilter filter){FilterRegistrationBean<MaintenanceFilter> registration=new FilterRegistrationBean<>(filter);registration.setEnabled(false);return registration;}
+
+    @Bean
+    FilterRegistrationBean<ReportApiKeyFilter> reportApiKeyFilterRegistration(ReportApiKeyFilter filter) {
+        FilterRegistrationBean<ReportApiKeyFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
 }
