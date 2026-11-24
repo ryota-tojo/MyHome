@@ -9,6 +9,12 @@ import java.time.LocalDateTime;
  * 同じversionがDBに存在する場合、既存レコードは上書きしない。
  */
 public enum DefaultVersion {
+    v1_0_3(
+            "1.0.3",
+            LocalDateTime.of(2026, 11, 24, 0, 0),
+            "レポートAPIを実装",
+            true
+    ),
     v1_0_2(
             "1.0.2",
             LocalDateTime.of(2026, 11, 18, 0, 0),

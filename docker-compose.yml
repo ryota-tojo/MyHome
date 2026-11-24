@@ -48,6 +48,7 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
+      REPORT_API_KEY: ${REPORT_API_KEY}
       SPRING_PROFILES_ACTIVE: docker
     depends_on:
       postgres:
