@@ -5,7 +5,7 @@ PHP は実行構成から除外されています。
 
 ## 起動
 
-1. `.env` に `DB_NAME`、`DB_USER`、`DB_PASSWORD` を設定します。
+1. `.env` に `DB_NAME`、`DB_USER`、`DB_PASSWORD`、`REPORT_API_KEY` を設定します。
 2. `./docker-restart.sh` を実行します。
 3. `http://localhost:8081/login` を開きます。
 
@@ -37,3 +37,21 @@ cd home_api
 ```
 
 DB接続は環境変数 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD` から読み込みます。
+
+## 外部レポートAPI
+
+Pythonなどの外部バッチから利用する読み取り専用APIです。すべてのリクエストに
+`.env`の`REPORT_API_KEY`を`X-Report-Api-Key`ヘッダーとして付けます。
+
+```bash
+curl -H "X-Report-Api-Key: $REPORT_API_KEY" http://localhost:8081/api/reports/groups
+curl -H "X-Report-Api-Key: $REPORT_API_KEY" http://localhost:8081/api/reports/groups/GROUP_ID/line-connection
+curl -H "X-Report-Api-Key: $REPORT_API_KEY" "http://localhost:8081/api/reports/groups/GROUP_ID/category-expenses?year=2026&month=11"
+```
+
+- `groups`: 有効な所属グループとLINE送信フラグ
+- `line-connection`: LINE送信が有効なグループのURL・トークン・送信先ID
+- `category-expenses`: ダッシュボードと同じ対象年月の収支・カテゴリ別支出
+
+`line-connection`には秘密情報が含まれるため、レスポンスは`Cache-Control: no-store`です。
+`REPORT_API_KEY`が未設定、または32文字未満の場合、APIは安全のため`503`を返します。
